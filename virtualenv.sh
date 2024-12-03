@@ -22,7 +22,7 @@ deactivate_venv() {
     local DEACT=$1
     local VENV_EXISTS=false
     
-    echo "${INFO}virtualenv.sh: Deactivating virtual env - ${VENV_PATH}...${NC}"
+    echo "${INFO}[INFO] Deactivating virtual env - ${VENV_PATH}...${NC}"
     
     # Check if we are in a virtual environment
     if [ -n "$VIRTUAL_ENV" ]; then
@@ -31,7 +31,7 @@ deactivate_venv() {
     fi
     
     rm -rf "$VENV_PATH"
-    echo "${SUCCESS}virtualenv.sh: Virtual environment removed!${NC}"
+    echo "${SUCCESS}[SUCCESS] Virtual environment removed!${NC}"
     if [ "$DEACT" = false ] && [ "$VENV_EXISTS" = true ]; then
         echo ""
     fi
@@ -39,24 +39,24 @@ deactivate_venv() {
 
 # Function to create and activate the virtual environment, and install requirements
 activate_venv() {
-    echo "${INFO}virtualenv.sh: Creating virtual env ${VENV_PATH}...${NC}"
+    echo "${INFO}[INFO] Creating virtual env ${VENV_PATH}...${NC}"
     python3 -m venv "$VENV_PATH" > /dev/null 2>&1
     source "$VENV_PATH/bin/activate"
 
-    echo "${INFO}virtualenv.sh: Upgrading pip, setuptools, and wheel...${NC}"
+    echo "${INFO}[INFO] Upgrading pip, setuptools, and wheel...${NC}"
     python3 -m pip install --upgrade pip setuptools wheel > /dev/null 2>&1
     
-    echo "${INFO}virtualenv.sh: Installing requirements...${NC}"
+    echo "${INFO}[INFO] Installing requirements...${NC}"
     python3 -m pip install -r requirements.txt --no-cache-dir --force-reinstall > /dev/null 2>&1
     if [ $? -eq 0 ]; then
-        echo "${SUCCESS}virtualenv.sh: Requirements installed successfully!${NC}"
+        echo "${SUCCESS}[SUCCESS] Requirements installed successfully!${NC}"
     else
-        echo "${ERROR}virtualenv.sh: Failed to install requirements. Check the logs above.${NC}"
+        echo "${ERROR}[ERROR] Failed to install requirements.${NC}"
         deactivate_venv true
         return 1
     fi
 
-    echo "${SUCCESS}virtualenv.sh: Virtual environment is ready!${NC}"
+    echo "${SUCCESS}[SUCCESS] Virtual environment is ready!${NC}"
 }
 
 
@@ -74,8 +74,8 @@ if [ "$1" = "--activate" ] || [ $# -eq 0 ]; then
 elif [ "$1" = "--deactivate" ]; then
     deactivate_venv true
 else
-    echo "${ERROR}virtualenv.sh: Invalid argument: $1${NC}"
-    echo "${INFO}virtualenv.sh: source ./virtualenv.sh [--activate] [--deactivate]${NC}"
+    echo "${ERROR}[ERROR] Invalid argument: $1${NC}"
+    echo "${INFO}[USAGE] source ./virtualenv.sh [--activate] [--deactivate]${NC}"
     echo "${INFO} - Use --activate or no argument to activate virtual env.${NC}"
     echo "${INFO} - Use --deactivate to deactivate virtual env.${NC}"
 fi
