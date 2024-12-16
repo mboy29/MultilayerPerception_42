@@ -1,6 +1,5 @@
 import argparse
 import numpy as np
-
 import sources.utils as utils
 
 def split_manually(data, ratio=0.8) -> tuple:

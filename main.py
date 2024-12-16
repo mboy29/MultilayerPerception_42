@@ -22,6 +22,9 @@ def parse() -> argparse.Namespace:
     split_parser.add_argument("--dataset_path", type=str, required=False, help=f"Path to the CSV file containing the dataset, default to '{utils.DEFAULT_DATASET_PATH}'", default=utils.DEFAULT_DATASET_PATH)
 
     train_parser = subparsers.add_parser("train", help="Train the multilayer perceptron model")
+    train_parser.add_argument("--train_path", type=str, required=False, help=f"Path to the CSV file containing the training set, default to '{utils.DEFAULT_TRAIN_PATH}'", default=utils.DEFAULT_TRAIN_PATH)
+    train_parser.add_argument("--validation_path", type=str, required=False, help=f"Path to the CSV file containing the validation set, default to '{utils.DEFAULT_VALIDATION_PATH}'", default=utils.DEFAULT_VALIDATION_PATH)
+
     predict_parser = subparsers.add_parser("predict", help="Predict the labels of the testing set using the trained model")
 
     return parser.parse_args()
@@ -32,7 +35,7 @@ def main():
     if args.command == "split":
         utils.split(args.dataset_path)
     elif args.command == "train":
-        utils.train()
+        utils.train(args.train_path, args.validation_path)
     elif args.command == "test":
         utils.predict()
     else:
