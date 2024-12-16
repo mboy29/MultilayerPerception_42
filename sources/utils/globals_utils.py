@@ -1,0 +1,11 @@
+import os
+
+ERROR='\033[38;2;255;173;194m'
+INFO='\033[38;2;204;219;253m'
+SUCCESS='\033[38;2;207;225;185m'
+NC='\033[0m'
+
+DEFAULT_DATASETS_DIR_PATH = "datasets"
+DEFAULT_TRAIN_PATH = os.path.join(DEFAULT_DATASETS_DIR_PATH, "train.csv")
+DEFAULT_VALIDATION_PATH = os.path.join(DEFAULT_DATASETS_DIR_PATH, "validation.csv")
+DEFAULT_DATASET_PATH = "datasets/data.csv"
