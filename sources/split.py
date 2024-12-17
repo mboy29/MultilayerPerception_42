@@ -36,6 +36,9 @@ def split_data(data, ratio=0.8) -> tuple:
         np.ndarray: The testing set.
     """
 
+    print(f"MP split: Shuffling data set")
+    np.random.shuffle(data)
+
     print(f"MP split: Splitting data set into Malignant and Benign")
     data_m = data[data[:, 1] == 'M']
     data_b = data[data[:, 1] == 'B']
@@ -57,7 +60,7 @@ def split_data(data, ratio=0.8) -> tuple:
 
     return train, test
 
-def split(dataset: str) -> None:
+def split(dataset: str, ratio: float) -> None:
     """
     Splits the dataset into training and testing sets.
 
@@ -70,7 +73,7 @@ def split(dataset: str) -> None:
     try:
         data = utils.read_csv(dataset)
         print(f"MP split: Splitting dataset...")
-        train, test = split_data(data)
+        train, test = split_data(data, ratio=ratio)
         utils.save_csv(train, utils.DEFAULT_TRAIN_PATH)
         utils.save_csv(test, utils.DEFAULT_VALIDATION_PATH)
         print(f"MP split: Splitting complete, training and testing sets saved to '{utils.DEFAULT_DATASETS_DIR_PATH}' directory")

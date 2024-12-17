@@ -8,4 +8,9 @@ NC='\033[0m'
 DEFAULT_DATASETS_DIR_PATH = "datasets"
 DEFAULT_TRAIN_PATH = os.path.join(DEFAULT_DATASETS_DIR_PATH, "train.csv")
 DEFAULT_VALIDATION_PATH = os.path.join(DEFAULT_DATASETS_DIR_PATH, "validation.csv")
+DEFAULT_TEST_PATH = os.path.join(DEFAULT_DATASETS_DIR_PATH, "test.csv")
 DEFAULT_DATASET_PATH = "datasets/data.csv"
+DEFAUlT_MODEL_PATH = "model.npz"
+
+MLP_ALPHA = 0.10
+MLP_NUM_ITERS = 500

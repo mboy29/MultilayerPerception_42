@@ -20,21 +20,21 @@ class Dataset:
         self.name = name
         self.raw_data = utils.read_csv(file_path)
         self.ids = None
-        self.results = None
-        self.data = None
+        self.labels = None
+        self.features = None
 
-        # Initialize attributes for processed data
+        # Initialize attributes for processed features
         self.x = 0
         self.y = 0
 
-        # Process data on initialization
+        # Process features on initialization
         self._process_raw_data()
-        self._normalize_data()
-        self._binarize_results()
+        self._normalize_features()
+        self._binarize_labels()
 
     def _process_raw_data(self):
         """
-        Private method to extract ids, results, and data from raw input.
+        Private method to extract ids, labels, and features from raw input.
 
         Parameters: None
         Returns: None
@@ -43,33 +43,35 @@ class Dataset:
         # Shuffle data
         np.random.shuffle(self.raw_data)
 
-        # Extract ids, results, and features
+        # Transpose .T every row except the first and second one
+        
+        # Extract ids, labels, and features
         self.ids = self.raw_data[:, 0].astype(int)
-        self.results = self.raw_data[:, 1].astype(str)
-        self.data = self.raw_data[:, 2:].astype(float)
+        self.labels = self.raw_data[:, 1].astype(str)
+        self.features = self.raw_data[:, 2:].astype(float) # Might not work
 
         # Store dimensions
-        self.x, self.y = self.data.shape
+        self.x, self.y = self.features.shape
 
-    def _normalize_data(self):
+    def _normalize_features(self):
         """
-        Private method to normalize feature data.
+        Private method to normalize features.
 
         Parameters: None
         Returns: None
         """
 
-        self.data = utils.normalize_data(self.data)
+        self.features = utils.normalize_data(self.features)
 
-    def _binarize_results(self):
+    def _binarize_labels(self):
         """
-        Private method to convert results to binary (M=1, B=0).
+        Private method to convert labels to binary (M=1, B=0).
 
         Parameters: None
         Returns: None
         """
 
-        self.results = np.where(self.results == 'M', 1, 0)
+        self.labels = np.where(self.labels == 'M', 1, 0)
 
     def __str__(self, n=5):
         """
@@ -84,3 +86,30 @@ class Dataset:
         return f"Dataset '{self.name}' Summary:\n" \
                 f" - Number of samples (x): {self.x}\n" \
                 f" - Number of features (y): {self.y}"
+
+class MLP:
+    def __init__(self, input_layer: int, 
+                 hidden_layers: list = [24, 24],  # Set 2 hidden layers by default
+                 output_layer: int = 1,            # Binary classification (output = 1)
+                 iterations: int = 1000, 
+                 learning_rate: float = 0.01):
+        """
+        Initializes the MLP with hyperparameters.
+
+        Parameters:
+            input_layer (int): The number of features in the input layer.
+            hidden_layers (list): List with the number of neurons in hidden layers.
+            output_layer (int): Number of output neurons (1 for binary classification).
+            iterations (int): Number of training iterations.
+            learning_rate (float): Learning rate for gradient descent.
+        """
+        self.input_layer = input_layer
+        self.hidden_layers = hidden_layers
+        self.output_layer = output_layer
+        self.layers = [input_layer] + hidden_layers + [output_layer]
+
+        self.iterations = iterations
+        self.learning_rate = learning_rate
+
+        # Initialize weights and biases
+        self.weights, self.biases = self._init_weights()
