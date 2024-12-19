@@ -1,7 +1,4 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import sources.utils as utils
-from sklearn.model_selection import train_test_split
     
 # https://www.kaggle.com/code/androbomb/simple-nn-with-python-multi-layer-perceptron?select=test.csv
 # Training function

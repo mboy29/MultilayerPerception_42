@@ -235,12 +235,39 @@ class MLP:
         # Initialize weights and biases
         self.weightH1, self.bias1, self.weightH2, self.bias2, self.weightOut, self.biasOut = self._init_weights()
 
+        highest_val_accuracy = 0
+        highest_val_accuracy_epoch = 0
+        lowest_val_loss = float('inf')
+        lowest_val_loss_epoch = 0
+
+        highest_train_accuracy = 0
+        highest_train_accuracy_epoch = 0
+        lowest_train_loss = float('inf')
+        lowest_train_loss_epoch = 0
+
         # Training over epochs
         for epoch in range(self.epochs):
             epoch_loss, train_accuracy = self._train_epoch()
 
             # Validation loss and accuracy
             val_loss, val_accuracy = self._validate_epoch()
+
+            # Store the best model
+            if val_accuracy > highest_val_accuracy:
+                highest_val_accuracy = val_accuracy
+                highest_val_accuracy_epoch = epoch
+            
+            if val_loss < lowest_val_loss:
+                lowest_val_loss = val_loss
+                lowest_val_loss_epoch = epoch
+            
+            if train_accuracy > highest_train_accuracy:
+                highest_train_accuracy = train_accuracy
+                highest_train_accuracy_epoch = epoch
+            
+            if epoch_loss < lowest_train_loss:
+                lowest_train_loss = epoch_loss
+                lowest_train_loss_epoch = epoch
 
             # Store the metrics
             self.train_loss_history.append(epoch_loss)
@@ -252,6 +279,10 @@ class MLP:
             self.train_metrics(epoch, epoch_loss, train_accuracy, val_loss, val_accuracy)
 
         print("MP train: Training completed")
+        print(f"MP train: Highest Validation Accuracy {highest_val_accuracy:.4f} at Epoch {highest_val_accuracy_epoch+1}")
+        print(f"MP train: Lowest Validation Loss {lowest_val_loss:.6f} at Epoch {lowest_val_loss_epoch+1}")
+        print(f"MP train: Highest Train Accuracy {highest_train_accuracy:.4f} at Epoch {highest_train_accuracy_epoch+1}")
+        print(f"MP train: Lowest Train Loss {lowest_train_loss:.6f} at Epoch {lowest_train_loss_epoch+1}")
 
     def train_plot(self, plot_path: str = utils.DEFAULT_PLOT_PATH):
         # Plot metrics
