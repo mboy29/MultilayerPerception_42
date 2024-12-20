@@ -5,24 +5,25 @@ import seaborn as sns
 from sklearn.metrics import confusion_matrix
 import sources.utils as utils
 
+
 class Dataset:
     """
     Class to represent a dataset, with methods to process and manipulate data.
     """
 
-    def __init__(self, name: str, file_path: str):
+    def __init__(self, name: str, raw_data: np.ndarray):
         """
         Initializes the dataset with a name and file path.
 
         Parameters:
             name (str): The name of the dataset.
-            file_path (str): The path to the dataset file.
+            raw_data (np.ndarray): The raw data to process.
         Returns: None
         """
         
         # Read and store raw data
         self.name = name
-        self.raw_data = utils.read_csv(file_path)
+        self.raw_data = raw_data
         self.ids = None
         self.labels = None
         self.features = None
@@ -33,7 +34,7 @@ class Dataset:
 
         # Process features on initialization
         self._process_raw_data()
-        self._normalize_features()
+        self._standardize_features()
         self._binarize_labels()
 
     def _process_raw_data(self):
@@ -67,6 +68,16 @@ class Dataset:
 
         self.features = utils.normalize_data(self.features)
 
+    def _standardize_features(self):
+        """
+        Private method to standardize features.
+
+        Parameters: None
+        Returns: None
+        """
+
+        self.features = utils.standardize_data(self.features)
+
     def _binarize_labels(self):
         """
         Private method to convert labels to binary (M=1, B=0).
@@ -92,11 +103,10 @@ class Dataset:
                 f" - Number of features (y): {self.y}"
     
 class MLP:
-    def __init__(self, train_data: Dataset = None, val_data: Dataset = None, layers: list = [24, 24], eta: float = 0.0314, epochs: int = 84, batch_size: int = 8):
+    def __init__(self, data_path: str = None, layers: list = [7, 7], eta: float = 0.001, epochs: int = 84, batch_size: int = 10):
         
         # Initialize attributes
-        self.train_data = train_data
-        self.val_data = val_data
+        self.train_data, self.val_data = self._split_data(data_path) if data_path else (None, None)
         self.layers = layers
         self.eta = eta
         self.epochs = epochs
@@ -115,48 +125,80 @@ class MLP:
 
         self.predictions = None
 
+    def _split_data(self, file_path: Dataset, ratio: float = utils.DEFAULT_RATIO):
+                 
+        data = utils.read_csv(file_path)
+        np.random.shuffle(data)
+
+        data_m = data[data[:, 1] == 'M']
+        data_b = data[data[:, 1] == 'B']
+
+        train_size_m = int(len(data_m) * ratio)
+        train_size_b = int(len(data_b) * ratio)
+
+        data_m_train = data_m[:train_size_m]
+        data_m_val = data_m[train_size_m:] if len(data_m) > train_size_m else data_m_train
+
+        data_b_train = data_b[:train_size_b]
+        data_b_val = data_b[train_size_b:] if len(data_b) > train_size_b else data_b_train
+
+        train_data = np.concatenate((data_m_train, data_b_train))
+        val_data = np.concatenate((data_m_val, data_b_val))
+
+        np.random.shuffle(train_data)
+        np.random.shuffle(val_data)
+
+        return Dataset("train", train_data), Dataset("validation", val_data)
+    
+
     def _init_weights(self):
 
         # Initialize 1st hidden layer weights and biases
-        weightH1 = 2 * np.random.rand(self.layers[0], self.train_data.features.shape[1]) - 0.5
+        weightH1 = np.random.randn(self.layers[0], self.train_data.features.shape[1]) * np.sqrt(2 / self.train_data.features.shape[1])
         bias1 = np.random.rand(self.layers[0])
 
         # Initialize 2nd hidden layer weights and biases
-        weightH2 = 2 * np.random.rand(self.layers[1], self.layers[0]) - 0.5
+        weightH2 = np.random.randn(self.layers[1], self.layers[0]) * np.sqrt(2 / self.layers[0])
         bias2 = np.random.rand(self.layers[1])
 
-        # Initialize output layer weights and biases
-        weightOut = 2 * np.random.rand(self.layers[1]) - 0.5
-        biasOut = np.random.rand(1)
+        # Initialize output layer weights and biases (2 units for softmax)
+        weightOut = np.random.randn(self.layers[1], 2) * np.sqrt(2 / self.layers[0])
+        biasOut = np.random.rand(2)  # 2 output units
 
         return weightH1, bias1, weightH2, bias2, weightOut, biasOut
 
+    
     def _update_weights(self, x, z1, z2, delta_1, delta_2, delta_Out):
-        
-        # Update 1st hidden layer weights and biases
-        self.weightH1 -= self.eta * np.outer(delta_1, x)
-        self.bias1 -= self.eta * delta_1
-        
-        # Update 2nd hidden layer weights and biases
-        self.weightH2 -= self.eta * np.outer(delta_2, z1)
-        self.bias2 -= self.eta * delta_2
-        
-        # Update output layer weights and biases
-        self.weightOut -= self.eta * delta_Out * z2
-        self.biasOut -= self.eta * delta_Out
+        # L2 regularization term
+        lambda_reg = 0.01
+        delta_1 = np.clip(delta_1, -10, 10)
+        delta_2 = np.clip(delta_2, -10, 10)
+        delta_Out = np.clip(delta_Out, -10, 10)
 
+        # Update weights with L2 regularization
+        self.weightH1 -= self.eta * (np.outer(delta_1, x) + lambda_reg * self.weightH1)
+        self.bias1 -= self.eta * delta_1
+        self.weightH2 -= self.eta * (np.outer(delta_2, z1) + lambda_reg * self.weightH2)
+        self.bias2 -= self.eta * delta_2
+        self.weightOut -= self.eta * (np.dot(z2[:, np.newaxis], delta_Out[:, np.newaxis].T) + lambda_reg * self.weightOut)
+        self.biasOut -= self.eta * delta_Out
 
     def _forward_propagation(self, x):
         z1 = utils.relu_data(np.dot(self.weightH1, x) + self.bias1)
         z2 = utils.relu_data(np.dot(self.weightH2, z1) + self.bias2)
-        y_pred = utils.sigmoid_data(np.dot(self.weightOut, z2) + self.biasOut)
+        y_pred = utils.softmax_data(np.dot(self.weightOut.T, z2) + self.biasOut)
         return z1, z2, y_pred
 
     def _backward_propagation(self, delta_Out, z2, z1):
-        delta_2 = delta_Out * self.weightOut * utils.relu_data(z2, der=True)
-        delta_1 = np.dot(delta_2, self.weightH2) * utils.relu_data(z1, der=True)
+        # Compute delta_2: the gradient of the error for the second hidden layer
+        # delta_Out has shape (2,) and self.weightOut has shape (2, 24), so delta_2 will have shape (24,)
+        delta_2 = np.dot(self.weightOut, delta_Out) * utils.relu_data(z2, der=True)  # Transpose self.weightOut for correct dimensions
+        
+        # Compute delta_1: the gradient of the error for the first hidden layer
+        delta_1 = np.dot(self.weightH2.T, delta_2) * utils.relu_data(z1, der=True)
+        
         return delta_1, delta_2
-    
+
     def _train_batch(self, X_batch, Y_batch):
         batch_loss = 0
         correct_predictions = 0
@@ -173,8 +215,8 @@ class MLP:
             correct_predictions += utils.accurancy_data(y_pred, y_true)
             total_predictions += 1
 
-            # Compute error
-            delta_Out = 2 * (y_pred - y_true) * utils.sigmoid_data(y_pred, der=True)
+            # Compute error (cross-entropy for softmax)
+            delta_Out = y_pred - utils.one_hot_encode_data(y_true, 2)
 
             # Backpropagation
             delta_1, delta_2 = self._backward_propagation(delta_Out, z2, z1)
@@ -183,16 +225,16 @@ class MLP:
             self._update_weights(x, z1, z2, delta_1, delta_2, delta_Out)
 
             # Accumulate batch loss
-            batch_loss += utils.loss_data(y_pred, y_true)
-
+            batch_loss += utils.binary_cross_entropy_data(utils.one_hot_encode_data(y_true, 2), y_pred)
         return batch_loss, correct_predictions, total_predictions
+
 
     def _train_epoch(self):
         epoch_loss = 0
         correct_predictions = 0
         total_predictions = 0
 
-        # Mini-batch gradient descent
+        # Loop through mini-batches in training data
         for i in range(0, self.train_data.features.shape[0], self.batch_size):
             X_batch = self.train_data.features[i:i + self.batch_size]
             Y_batch = self.train_data.labels[i:i + self.batch_size]
@@ -200,20 +242,23 @@ class MLP:
             # Train on the current batch
             batch_loss, batch_correct_predictions, batch_total_predictions = self._train_batch(X_batch, Y_batch)
 
-            # Accumulate loss and accuracy
-            epoch_loss += batch_loss / len(X_batch)
+            # Accumulate loss and accuracy for the epoch
+            epoch_loss += batch_loss
             correct_predictions += batch_correct_predictions
             total_predictions += batch_total_predictions
 
+        # Average the loss over all mini-batches in the epoch
         train_accuracy = correct_predictions / total_predictions
-        return epoch_loss, train_accuracy
+        return epoch_loss / (self.train_data.features.shape[0] // self.batch_size), train_accuracy
 
+
+   
     def _validate_epoch(self):
         val_loss = 0
         val_correct_predictions = 0
         val_total_predictions = 0
 
-        # Validation loop
+        # Validation loop (no weight updates here)
         for i in range(self.val_data.features.shape[0]):
             x = self.val_data.features[i]
             y_true = self.val_data.labels[i]
@@ -221,68 +266,53 @@ class MLP:
             # Forward propagation on validation set
             z1 = utils.relu_data(np.dot(self.weightH1, x) + self.bias1)
             z2 = utils.relu_data(np.dot(self.weightH2, z1) + self.bias2)
-            y_pred = utils.sigmoid_data(np.dot(self.weightOut, z2) + self.biasOut)
+            y_pred = utils.softmax_data(np.dot(self.weightOut.T, z2) + self.biasOut)
 
-            # Compute loss and accuracy
-            val_loss += utils.loss_data(y_pred, y_true)
+            # Compute loss and accuracy for the validation set
+            val_loss += utils.binary_cross_entropy_data(utils.one_hot_encode_data(y_true, 2), y_pred)
             val_correct_predictions += utils.accurancy_data(y_pred, y_true)
             val_total_predictions += 1
 
+        # Average loss and accuracy over all validation samples
         val_accuracy = val_correct_predictions / val_total_predictions
         return val_loss / self.val_data.features.shape[0], val_accuracy
+    
 
     def train(self):
         # Initialize weights and biases
         self.weightH1, self.bias1, self.weightH2, self.bias2, self.weightOut, self.biasOut = self._init_weights()
 
         highest_val_accuracy = 0
-        highest_val_accuracy_epoch = 0
         lowest_val_loss = float('inf')
-        lowest_val_loss_epoch = 0
-
-        highest_train_accuracy = 0
-        highest_train_accuracy_epoch = 0
-        lowest_train_loss = float('inf')
-        lowest_train_loss_epoch = 0
 
         # Training over epochs
         for epoch in range(self.epochs):
+            # 1. Train the model on the training data
             epoch_loss, train_accuracy = self._train_epoch()
 
-            # Validation loss and accuracy
+            # 2. Calculate validation loss (without updating weights)
             val_loss, val_accuracy = self._validate_epoch()
 
-            # Store the best model
+            # 3. Track the best model based on validation performance
             if val_accuracy > highest_val_accuracy:
                 highest_val_accuracy = val_accuracy
-                highest_val_accuracy_epoch = epoch
-            
+
             if val_loss < lowest_val_loss:
                 lowest_val_loss = val_loss
-                lowest_val_loss_epoch = epoch
-            
-            if train_accuracy > highest_train_accuracy:
-                highest_train_accuracy = train_accuracy
-                highest_train_accuracy_epoch = epoch
-            
-            if epoch_loss < lowest_train_loss:
-                lowest_train_loss = epoch_loss
-                lowest_train_loss_epoch = epoch
 
-            # Store the metrics
+            # 4. Store the metrics for plotting
             self.train_loss_history.append(epoch_loss)
             self.train_accuracy_history.append(train_accuracy)
             self.val_loss_history.append(val_loss)
             self.val_accuracy_history.append(val_accuracy)
 
-            # Print metrics
+            # 5. Print metrics for the current epoch
             self.train_metrics(epoch, epoch_loss, train_accuracy, val_loss, val_accuracy)
 
-        print("MP train: Training completed")
-        print(f"MP train: Highest Validation Accuracy {highest_val_accuracy:.4f} at Epoch {highest_val_accuracy_epoch+1}")
-        print(f"MP train: Lowest Validation Loss {lowest_val_loss:.6f} at Epoch {lowest_val_loss_epoch+1}")
-        print(f"MP train: Highest Train Accuracy {highest_train_accuracy:.4f} at Epoch {highest_train_accuracy_epoch+1}")
-        print(f"MP train: Lowest Train Loss {lowest_train_loss:.6f} at Epoch {lowest_train_loss_epoch+1}")
+        print("Training complete")
+        print(f"Highest Validation Accuracy: {highest_val_accuracy:.4f}")
+        print(f"Lowest Validation Loss: {lowest_val_loss:.6f}")
+
 
     def train_plot(self, plot_path: str = utils.DEFAULT_PLOT_PATH):
         # Plot metrics
@@ -349,10 +379,10 @@ class MLP:
             # Feed forward
             z1 = utils.relu_data(np.dot(self.weightH1, x) + self.bias1)  # first hidden layer
             z2 = utils.relu_data(np.dot(self.weightH2, z1) + self.bias2)  # second hidden layer
-            y = utils.sigmoid_data(np.dot(self.weightOut, z2) + self.biasOut)
+            y = utils.softmax_data(np.dot(self.weightOut.T, z2) + self.biasOut)
             
-            # Append the prediction; applying threshold at 0.5 for binary classification
-            predictions.append(np.heaviside(y - 0.5, 1)[0])
+            # Append the prediction; class with the highest probability
+            predictions.append(np.argmax(y))
         
         self.predictions = np.array(predictions)
         print("MP predict: Predictions completed")
@@ -386,18 +416,15 @@ class MLP:
         # Calculate predicted probabilities (feed-forward through the model)
         for i in range(X_test.shape[0]):
             x = X_test[i]
-
-            # Perform forward propagation
             z1 = utils.relu_data(np.dot(self.weightH1, x) + self.bias1)
             z2 = utils.relu_data(np.dot(self.weightH2, z1) + self.bias2)
-            y_pred = utils.sigmoid_data(np.dot(self.weightOut, z2) + self.biasOut)
-
-            # Store the predicted probabilities
-            predicted_probs[i] = y_pred
+            y_pred = utils.softmax_data(np.dot(self.weightOut.T, z2) + self.biasOut)
+            predicted_probs[i] = y_pred[1]
 
         # Calculate binary cross-entropy error
-        bce_error = utils.bce_data(Y_test, predicted_probs)
-        print(f"MP predict: Binary Cross-Entropy Error {bce_error:.6f}")
+        bce_error = utils.binary_cross_entropy_data(Y_test, predicted_probs)
+        print(f"MP predict: Binary Cross-Entropy Loss {bce_error:.6f}")
+
 
     def save_predictions(self, path: str = utils.DEFAULT_PREDICTIONS_PATH):
         if not os.path.exists(os.path.dirname(path)):

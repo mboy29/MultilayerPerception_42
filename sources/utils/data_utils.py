@@ -11,6 +11,16 @@ def normalize_data(data: np.ndarray) -> np.ndarray:
     """
     return (data - np.min(data, axis=0)) / (np.max(data, axis=0) - np.min(data, axis=0))
 
+def standardize_data(data: np.ndarray) -> np.ndarray:
+    """
+    Standardizes the data using z-score normalization, applied column-wise.
+
+    Parameters:
+        data (np.ndarray): The data to standardize.
+    Returns:
+        np.ndarray: The standardized data.
+    """
+    return (data - np.mean(data, axis=0)) / np.std(data, axis=0)
 
 def sigmoid_data(data: np.ndarray, der=False) -> np.ndarray:
     """
@@ -54,7 +64,7 @@ def loss_data(y_pred: np.ndarray, y_truth: np.ndarray) -> float:
     Returns:
         float: The loss value.
     """
-    return ((y_pred - y_truth) ** 2).item()
+    return np.mean((y_pred - y_truth) ** 2)
 
 def accurancy_data(y_pred: np.ndarray, y_truth: np.ndarray) -> float:
     """
@@ -66,24 +76,54 @@ def accurancy_data(y_pred: np.ndarray, y_truth: np.ndarray) -> float:
     Returns:
         float: The accuracy value.
     """
-    y_pred_label = 1 if y_pred >= 0.5 else 0
-    return 1 if y_pred_label == y_truth else 0
+    predicted_class = np.argmax(y_pred)
+    return np.sum(predicted_class == y_truth)
 
-def bce_data(y_true, y_pred):
+import numpy as np
+
+def binary_cross_entropy_data(y_true, y_pred):
     """
-    Compute the binary cross-entropy error.
+    Binary Cross Entropy loss function.
     
     Parameters:
-        y_true (np.ndarray): True labels (binary, 0 or 1).
-        y_pred (np.ndarray): Predicted probabilities for the positive class.
-    
+        y_true (numpy.ndarray): The true labels.
+        y_pred (numpy.ndarray): The predicted labels (probabilities between 0 and 1).
     Returns:
-        float: The binary cross-entropy error.
+        float: The loss value.
     """
-    # Clip predictions to avoid log(0) errors, using a small epsilon value.
+    # Debug prints, useful during development, can be commented out in production
+    # print("true", y_true.shape, y_true)
+    # print("pred", y_pred.shape, y_pred)
+    
+    # Numerical stability: Clip y_pred to avoid log(0)
     epsilon = 1e-15
     y_pred = np.clip(y_pred, epsilon, 1 - epsilon)
+    
+    # Compute Binary Cross Entropy
+    loss = -np.mean(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred))
+    
+    return loss
 
-    # Calculate the binary cross-entropy
-    error = -np.mean(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred))
-    return error
+def one_hot_encode_data(y, num_classes=2):
+    """
+    One-hot encodes the target labels.
+
+    Parameters:
+        y (numpy.ndarray): The target labels.
+        num_classes (int): The number of classes.
+    Returns:
+        numpy.ndarray: The one-hot encoded labels.
+    """
+    return np.eye(num_classes)[y]
+
+def softmax_data(z):
+    """
+    Softmax activation function for the output layer.
+
+    Parameters:
+        z (numpy.ndarray): The input vector for the output layer.
+    Returns:
+        numpy.ndarray: The probabilities for each class.
+    """
+    exp_z = np.exp(z - np.max(z, axis=0, keepdims=True))
+    return exp_z / np.sum(exp_z, axis=0, keepdims=True)

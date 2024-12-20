@@ -3,16 +3,13 @@ import sources.utils as utils
 # https://www.kaggle.com/code/androbomb/simple-nn-with-python-multi-layer-perceptron?select=test.csv
 # Training function
 
-def train(train_path, val_path):
+def train(train_path):
     try:
         print(f"MP train: Loading training and validation data")
-        
-        # Load datasets
-        train_data = utils.Dataset("train", train_path)
-        val_data = utils.Dataset("validation", val_path)
 
+        print(f"MP train: Training the model")
         # Train the model, plot the results, and save the model
-        model = utils.MLP(train_data, val_data)
+        model = utils.MLP(train_path)
         model.train()
         model.train_plot()
         model.save_model()
