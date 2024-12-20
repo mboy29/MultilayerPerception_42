@@ -103,7 +103,7 @@ class Dataset:
                 f" - Number of features (y): {self.y}"
     
 class MLP:
-    def __init__(self, data_path: str = None, layers: list = [7, 7], eta: float = 0.001, epochs: int = 84, batch_size: int = 10):
+    def __init__(self, data_path: str = None, layers: list = [8, 8], eta: float = 0.001, epochs: int = 84, batch_size: int = 10, decay: float = 0.0025):
         
         # Initialize attributes
         self.train_data, self.val_data = self._split_data(data_path) if data_path else (None, None)
@@ -111,6 +111,7 @@ class MLP:
         self.eta = eta
         self.epochs = epochs
         self.batch_size = batch_size
+        self.decay = decay
 
         # Initialize weights and biases (1st hidden layer, 2nd hidden layer, output layer)
         self.weightH1, self.bias1 = None, None
@@ -169,18 +170,17 @@ class MLP:
 
     
     def _update_weights(self, x, z1, z2, delta_1, delta_2, delta_Out):
-        # L2 regularization term
-        lambda_reg = 0.01
+
         delta_1 = np.clip(delta_1, -10, 10)
         delta_2 = np.clip(delta_2, -10, 10)
         delta_Out = np.clip(delta_Out, -10, 10)
 
         # Update weights with L2 regularization
-        self.weightH1 -= self.eta * (np.outer(delta_1, x) + lambda_reg * self.weightH1)
+        self.weightH1 -= self.eta * (np.outer(delta_1, x) + self.decay * self.weightH1)
         self.bias1 -= self.eta * delta_1
-        self.weightH2 -= self.eta * (np.outer(delta_2, z1) + lambda_reg * self.weightH2)
+        self.weightH2 -= self.eta * (np.outer(delta_2, z1) + self.decay * self.weightH2)
         self.bias2 -= self.eta * delta_2
-        self.weightOut -= self.eta * (np.dot(z2[:, np.newaxis], delta_Out[:, np.newaxis].T) + lambda_reg * self.weightOut)
+        self.weightOut -= self.eta * (np.dot(z2[:, np.newaxis], delta_Out[:, np.newaxis].T) + self.decay * self.weightOut)
         self.biasOut -= self.eta * delta_Out
 
     def _forward_propagation(self, x):
@@ -224,9 +224,15 @@ class MLP:
             # Update weights and biases
             self._update_weights(x, z1, z2, delta_1, delta_2, delta_Out)
 
-            # Accumulate batch loss
+            # Calculate the binary cross-entropy loss
             batch_loss += utils.binary_cross_entropy_data(utils.one_hot_encode_data(y_true, 2), y_pred)
+
+        # Add L2 regularization loss (sum of squared weights)
+        l2_loss = self.decay * (np.sum(self.weightH1 ** 2) + np.sum(self.weightH2 ** 2) + np.sum(self.weightOut ** 2))
+        batch_loss += l2_loss
+
         return batch_loss, correct_predictions, total_predictions
+
 
 
     def _train_epoch(self):

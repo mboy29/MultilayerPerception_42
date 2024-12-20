@@ -1,3 +1,5 @@
 datasets/test.csv
 datasets/validation.csv
 model.npz
+train
+predict
