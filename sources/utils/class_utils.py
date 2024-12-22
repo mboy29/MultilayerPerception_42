@@ -103,7 +103,15 @@ class Dataset:
                 f" - Number of features (y): {self.y}"
     
 class MLP:
-    def __init__(self, data_path: str = None, layers: list = utils.DEFAULT_LAYERS, eta: float = utils.DEFAULT_LEARNING_RATE, epochs: int = utils.DEFAULT_EPOCHS, batch_size: int = utils.DEFAULT_BATCH_SIZE, decay: float = utils.DEFAULT_DECAY):
+    def __init__(self, 
+                 data_path: str = None, 
+                 layers: list = utils.DEFAULT_LAYERS, 
+                 eta: float = utils.DEFAULT_LEARNING_RATE,
+                 epochs: int = utils.DEFAULT_EPOCHS, 
+                 batch_size: int = utils.DEFAULT_BATCH_SIZE, 
+                 regulation: float = utils.DEFAULT_REGULATION, 
+                 early_stopping: bool = utils.DEFAULT_EARLY_STOPPING, 
+                 patience: int = utils.DEFAULT_PATIENCE):
         """
         Initializes the Multi-Layer Perceptron (MLP) model with hyperparameters.
 
@@ -113,7 +121,9 @@ class MLP:
             eta (float): The learning rate, default to utils.DEFAULT_LEARNING_RATE.
             epochs (int): The number of training epochs, default to utils.DEFAULT_EPOCHS.
             batch_size (int): The number of samples per mini-batch, default to utils.DEFAULT_BATCH_SIZE.
-            decay (float): The L2 regularization parameter, default to utils.DEFAULT_DECAY.
+            regulation (float): The L2 regularization parameter, default to utils.DEFAULT_REGULATION.
+            early_stopping (bool): Enable early stopping, default to utils.DEFAULT_EARLY_STOPPING.
+            patience (int): The number of epochs with no improvement to trigger early stopping, default to utils.DEFAULT_PATIENCE.
         Returns: None
         """
         # Initialize attributes
@@ -122,7 +132,14 @@ class MLP:
         self.eta = eta
         self.epochs = epochs
         self.batch_size = batch_size
-        self.decay = decay
+        self.regulation = regulation
+        self.early_stopping = early_stopping
+        self.patience = patience
+        
+        # Early stopping variables
+        self.early_stopping_epochs = None
+        self.best_weights = None
+        self.no_improvement_epochs = 0
 
         # Initialize weights and biases (1st hidden layer, 2nd hidden layer, output layer)
         self.weightH1, self.bias1 = None, None
@@ -145,12 +162,16 @@ class MLP:
         Returns:
             str: The summary of the model
         """
-        return f"{utils.BOLD_INFO}MP train: {utils.INFO}Model metrics:\n" \
+        string: str = f"{utils.BOLD_INFO}MP train: {utils.INFO}Model metrics:\n" \
                 f"  - Hidden Layers: {self.layers}\n" \
                 f"  - Learning Rate: {self.eta}\n" \
                 f"  - Epochs: {self.epochs}\n" \
                 f"  - Batch Size: {self.batch_size}\n" \
-                f"  - L2 Regularization: {self.decay}{utils.NC}"
+                f"  - L2 Regularization: {self.regulation}\n" \
+                f"  - Early Stopping: {self.early_stopping}{utils.NC}"
+        if self.early_stopping:
+            string += f"{utils.INFO}\n  - Patience: {self.patience}{utils.NC}"
+        return string
 
     def _split_data(self, file_path: Dataset, ratio: float = utils.DEFAULT_RATIO):
         """
@@ -240,11 +261,11 @@ class MLP:
         delta_Out = np.clip(delta_Out, -10, 10)
 
         # Update weights with L2 regularization
-        self.weightH1 -= self.eta * (np.outer(delta_1, x) + self.decay * self.weightH1)
+        self.weightH1 -= self.eta * (np.outer(delta_1, x) + self.regulation * self.weightH1)
         self.bias1 -= self.eta * delta_1
-        self.weightH2 -= self.eta * (np.outer(delta_2, z1) + self.decay * self.weightH2)
+        self.weightH2 -= self.eta * (np.outer(delta_2, z1) + self.regulation * self.weightH2)
         self.bias2 -= self.eta * delta_2
-        self.weightOut -= self.eta * (np.dot(z2[:, np.newaxis], delta_Out[:, np.newaxis].T) + self.decay * self.weightOut)
+        self.weightOut -= self.eta * (np.dot(z2[:, np.newaxis], delta_Out[:, np.newaxis].T) + self.regulation * self.weightOut)
         self.biasOut -= self.eta * delta_Out
 
     def _forward_propagation(self, x):
@@ -325,7 +346,7 @@ class MLP:
             batch_loss += utils.binary_cross_entropy_data(utils.one_hot_encode_data(y_true, 2), y_pred)
 
         # Add L2 regularization loss (sum of squared weights)
-        l2_loss = self.decay * (np.sum(self.weightH1 ** 2) + np.sum(self.weightH2 ** 2) + np.sum(self.weightOut ** 2))
+        l2_loss = self.regulation * (np.sum(self.weightH1 ** 2) + np.sum(self.weightH2 ** 2) + np.sum(self.weightOut ** 2))
         batch_loss += l2_loss
 
         return batch_loss, correct_predictions, total_predictions
@@ -392,15 +413,42 @@ class MLP:
         val_accuracy = val_correct_predictions / val_total_predictions
         return val_loss / self.val_data.features.shape[0], val_accuracy
     
+    def _early_stopping(self, val_loss, lowest_val_loss, epoch):
+        """
+        Private method to implement early stopping.
+
+        Parameters: None
+        Returns:
+            int: The number of consecutive epochs with no improvement.
+            tuple: The best weights and biases.
+        """
+        if val_loss < lowest_val_loss['value']:
+            lowest_val_loss['value'] = val_loss
+            lowest_val_loss['epoch'] = epoch + 1
+            self.best_weights = {'epoch': epoch + 1,
+                            'weights': (self.weightH1.copy(), self.bias1.copy(), 
+                            self.weightH2.copy(), self.bias2.copy(), 
+                            self.weightOut.copy(), self.biasOut.copy())}
+            self.no_improvement_epochs = 0  # Reset counter if improvement
+        else:
+            self.no_improvement_epochs += 1
+        if self.early_stopping and self.no_improvement_epochs >= self.patience:
+            print(f"{utils.BOLD_INFO}MP train: {utils.INFO}Early stopping triggered after { self.patience} epochs of no improvement in validation loss.{utils.NC}")
+            self.early_stopping_epochs = epoch + 1
+            return True
+        return False
+        
 
     def train(self):
         """
-        Method to trains the model on the training data and validates on the validation data.
+        Method to train the model on the training data and validate on the validation data.
+        Implements early stopping if self.early_stopping is True.
 
-        Parameters: None
+        Parameters:
+            patience (int): The number of consecutive epochs with no improvement on validation loss to stop training.
         Returns: None
         """
-        print(f"{utils.BOLD_INFO}MP train: {utils.INFO}Training model:{utils.NC}")
+        print(f"{utils.BOLD_INFO}MP train: {utils.INFO}Training model with{'out' if not self.early_stopping else ''} early stopping:{utils.NC}")
 
         # Initialize weights and biases
         self.weightH1, self.bias1, self.weightH2, self.bias2, self.weightOut, self.biasOut = self._init_weights()
@@ -410,23 +458,19 @@ class MLP:
         highest_train_accuracy = {'value': 0, 'epoch': 0}
         lowest_train_loss = {'value': float('inf'), 'epoch': 0}
 
+        # Early stopping variables
+        self.best_weights = None
+        self.no_improvement_epochs = 0
+
         # Training over epochs
         for epoch in range(self.epochs):
             # 1. Train the model on the training data
             epoch_loss, train_accuracy = self._train_epoch()
 
-            # 2. Calculate validation loss (without updating weights)
+            # 2. Calculate validation loss and accuracy (without updating weights)
             val_loss, val_accuracy = self._validate_epoch()
 
-            # 3. Track the best model based on training and validation performance
-            if val_accuracy > highest_val_accuracy['value']:
-                highest_val_accuracy['value'] = val_accuracy
-                highest_val_accuracy['epoch'] = epoch + 1
-
-            if val_loss < lowest_val_loss['value']:
-                lowest_val_loss['value'] = val_loss
-                lowest_val_loss['epoch'] = epoch + 1
-            
+            # Track training accuracy and loss
             if train_accuracy > highest_train_accuracy['value']:
                 highest_train_accuracy['value'] = train_accuracy
                 highest_train_accuracy['epoch'] = epoch + 1
@@ -435,7 +479,12 @@ class MLP:
                 lowest_train_loss['value'] = epoch_loss
                 lowest_train_loss['epoch'] = epoch + 1
 
-            # 4. Store the metrics for plotting
+            # Track validation accuracy
+            if val_accuracy > highest_val_accuracy['value']:
+                highest_val_accuracy['value'] = val_accuracy
+                highest_val_accuracy['epoch'] = epoch + 1
+
+            # 4. Store metrics for plotting
             self.train_loss_history.append(epoch_loss)
             self.train_accuracy_history.append(train_accuracy)
             self.val_loss_history.append(val_loss)
@@ -444,10 +493,27 @@ class MLP:
             # 5. Print metrics for the current epoch
             self.train_metrics(epoch, epoch_loss, train_accuracy, val_loss, val_accuracy)
 
-        print(f"{utils.BOLD_INFO}MP train: {utils.INFO}Training complete{utils.NC}")
+            # Early stopping check
+            if self._early_stopping(val_loss, lowest_val_loss, epoch):
+                break
         
+        # Set the epoch limit for early stopping
+        if self.early_stopping and self.early_stopping_epochs == None:
+            self.early_stopping_epochs = self.epochs
+
+        # Restore the best weights
+        if self.early_stopping:
+            if self.best_weights is not None:
+                self.weightH1, self.bias1, self.weightH2, self.bias2, self.weightOut, self.biasOut = self.best_weights['weights']
+                print(f"{utils.BOLD_INFO}MP train: {utils.INFO}Restored best weights from epoch {self.best_weights['epoch']}.{utils.NC}")
+            else:
+                print(f"{utils.BOLD_INFO}MP train: {utils.INFO}No improvement in validation loss, best weights not restored.{utils.NC}")
+
+        print(f"{utils.BOLD_INFO}MP train: {utils.INFO}Training complete.{utils.NC}")
+
         # Print final metrics
         self.train_final_metrics(highest_val_accuracy, lowest_val_loss, highest_train_accuracy, lowest_train_loss)
+
 
     def train_plot(self, plot_path: str = utils.DEFAULT_PLOT_PATH):
         """
@@ -458,14 +524,18 @@ class MLP:
         Returns: None
         """
 
+        # Check if early stopping was triggered to set the epoch limit
+        if self.early_stopping: epoch = self.early_stopping_epochs
+        else: epoch = self.epochs
+
         # Plot metrics
         plt.figure(figsize=(12, 6))
 
         # Loss plot
         plt.subplot(1, 2, 1)
-        plt.plot(range(1, self.epochs + 1), self.train_loss_history, 'b', label='Train Loss')
-        plt.plot(range(1, self.epochs + 1), self.val_loss_history, 'r', label='Validation Loss')
-        plt.title('Train vs Validation Loss')
+        plt.plot(range(1, epoch + 1), self.train_loss_history, 'b', label='Train Loss')
+        plt.plot(range(1, epoch + 1), self.val_loss_history, 'r', label='Validation Loss')
+        plt.title(f'Train vs Validation Loss {"(with early stopping)" if self.early_stopping else ""}')
         plt.xlabel('Epoch')
         plt.ylabel('Loss')
         plt.legend()
@@ -473,9 +543,9 @@ class MLP:
 
         # Accuracy plot
         plt.subplot(1, 2, 2)
-        plt.plot(range(1, self.epochs + 1), self.train_accuracy_history, 'b', label='Train Accuracy')
-        plt.plot(range(1, self.epochs + 1), self.val_accuracy_history, 'r', label='Validation Accuracy')
-        plt.title('Train vs Validation Accuracy')
+        plt.plot(range(1, epoch + 1), self.train_accuracy_history, 'b', label='Train Accuracy')
+        plt.plot(range(1, epoch + 1), self.val_accuracy_history, 'r', label='Validation Accuracy')
+        plt.title(f'Train vs Validation Accuracy {"(with early stopping)" if self.early_stopping else ""}')
         plt.xlabel('Epoch')
         plt.ylabel('Accuracy')
         plt.legend()

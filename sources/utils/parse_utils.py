@@ -124,20 +124,23 @@ def parse() -> argparse.Namespace:
 
     # Sub-parser for the "split" command
     split_parser = subparsers.add_parser("split", help="Split the dataset into training and testing sets")
-    split_parser.add_argument("-p", "--data_path", type=str, required=False, help=f"Path to the CSV file containing the dataset (default: '{utils.DEFAULT_DATASET_PATH}')", default=utils.DEFAULT_DATASET_PATH)
+    split_parser.add_argument("-d", "--data_path", type=str, required=False, help=f"Path to the CSV file containing the dataset (default: '{utils.DEFAULT_DATASET_PATH}')", default=utils.DEFAULT_DATASET_PATH)
     split_parser.add_argument("-r", "--ratio", type=float, required=False, help="The ratio of data to be included in the training set", default=utils.DEFAULT_RATIO)
 
     # Sub-parser for the "train" command
     train_parser = subparsers.add_parser("train", help="Train the multilayer perceptron model")
-    train_parser.add_argument("-p", "--data_path", type=str, required=False, help=f"Path to the CSV file containing the training set (default: '{utils.DEFAULT_TRAIN_PATH}')", default=utils.DEFAULT_TRAIN_PATH)
+    train_parser.add_argument("-d", "--data_path", type=str, required=False, help=f"Path to the CSV file containing the training set (default: '{utils.DEFAULT_TRAIN_PATH}')", default=utils.DEFAULT_TRAIN_PATH)
     train_parser.add_argument("-l", "--layers_size", type=list_parse, required=False,   help="The size of the 2 hidden layers", default=utils.DEFAULT_LAYERS)
     train_parser.add_argument("-eta", "--learning_rate", type=unfloat_parse, required=False, help="The learning rate of the model", default=utils.DEFAULT_LEARNING_RATE)
     train_parser.add_argument("-e", "--epochs", type=unint_parse, required=False, help="The number of epochs to train the model", default=utils.DEFAULT_EPOCHS)
     train_parser.add_argument("-b", "--batch_size", type=unint_parse, required=False, help="The batch size to train the model", default=utils.DEFAULT_BATCH_SIZE)
-    train_parser.add_argument("-d", "--decay", type=unfloat_parse, required=False, help="The decay of the model", default=utils.DEFAULT_DECAY)
+    train_parser.add_argument("-r", "--regulation", type=unfloat_parse, required=False, help="The decay of the model", default=utils.DEFAULT_REGULATION)
+    train_parser.add_argument("-es", "--early_stopping", action="store_true", help="Enable early stopping")
+    train_parser.add_argument("-p", "--patience", type=unint_parse, required=False, help="The patience for early stopping", default=utils.DEFAULT_PATIENCE)
 
     # Sub-parser for the "predict" command
     predict_parser = subparsers.add_parser("predict", help="Predict the labels of the testing set using the trained model")
-    predict_parser.add_argument("-p", "--data_path", type=str, required=False, help=f"Path to the CSV file containing the testing set (default: '{utils.DEFAULT_TEST_PATH}')", default=utils.DEFAULT_TEST_PATH)
+    predict_parser.add_argument("-d", "--data_path", type=str, required=False, help=f"Path to the CSV file containing the testing set (default: '{utils.DEFAULT_TEST_PATH}')", default=utils.DEFAULT_TEST_PATH)
+    predict_parser.add_argument("-cm", "--confusion_matrix", action="store_true", help="Display the confusion matrix")
 
     return parser.parse_args()

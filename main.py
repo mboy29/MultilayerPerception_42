@@ -2,13 +2,19 @@ import argparse
 import sources as utils
 
 def main():
+    """
+    Main function to parse the arguments and call the appropriate function.
+
+    Parameters: None
+    Returns: None
+    """
     args = utils.parse()
     if args.command == "split":
         utils.split(args.data_path, args.ratio)
     elif args.command == "train":
-        utils.train(args.data_path, args.layers_size, args.learning_rate, args.epochs, args.batch_size, args.decay)
+        utils.train(args.data_path, args.layers_size, args.learning_rate, args.epochs, args.batch_size, args.regulation, args.early_stopping, args.patience)
     elif args.command == "predict":
-        utils.predict(args.data_path)
+        utils.predict(args.data_path, args.confusion_matrix)
     else:
         raise ValueError(f"Unknown command: {args.command}")
 
