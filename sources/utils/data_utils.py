@@ -79,8 +79,6 @@ def accurancy_data(y_pred: np.ndarray, y_truth: np.ndarray) -> float:
     predicted_class = np.argmax(y_pred)
     return np.sum(predicted_class == y_truth)
 
-import numpy as np
-
 def binary_cross_entropy_data(y_true, y_pred):
     """
     Binary Cross Entropy loss function.

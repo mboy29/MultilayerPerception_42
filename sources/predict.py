@@ -1,6 +1,5 @@
 import sources.utils as utils
 
-
 def predict(test_path: str) -> None:
     try:
         # Load the saved model parameters
@@ -14,10 +13,9 @@ def predict(test_path: str) -> None:
         X_test = data_test.features
         Y_test = data_test.labels
 
-        model.predict(X_test)
+        model.predict(X_test, Y_test)
         model.predict_plot(Y_test)
-        model.predict_metrics(Y_test, X_test)
-        # model.save_predictions()
+        model.save_predictions()
 
     except Exception as e:
         print(f"Error during prediction: {e}")

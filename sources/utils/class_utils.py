@@ -103,8 +103,19 @@ class Dataset:
                 f" - Number of features (y): {self.y}"
     
 class MLP:
-    def __init__(self, data_path: str = None, layers: list = [8, 8], eta: float = 0.001, epochs: int = 84, batch_size: int = 10, decay: float = 0.0025):
-        
+    def __init__(self, data_path: str = None, layers: list = utils.DEFAULT_LAYERS, eta: float = utils.DEFAULT_LEARNING_RATE, epochs: int = utils.DEFAULT_EPOCHS, batch_size: int = utils.DEFAULT_BATCH_SIZE, decay: float = utils.DEFAULT_DECAY):
+        """
+        Initializes the Multi-Layer Perceptron (MLP) model with hyperparameters.
+
+        Parameters:
+            data_path (str): The path to the dataset file, default to None.
+            layers (list): The number of units in each hidden layer, default to utils.DEFAULT_LAYERS.
+            eta (float): The learning rate, default to utils.DEFAULT_LEARNING_RATE.
+            epochs (int): The number of training epochs, default to utils.DEFAULT_EPOCHS.
+            batch_size (int): The number of samples per mini-batch, default to utils.DEFAULT_BATCH_SIZE.
+            decay (float): The L2 regularization parameter, default to utils.DEFAULT_DECAY.
+        Returns: None
+        """
         # Initialize attributes
         self.train_data, self.val_data = self._split_data(data_path) if data_path else (None, None)
         self.layers = layers
@@ -126,33 +137,74 @@ class MLP:
 
         self.predictions = None
 
-    def _split_data(self, file_path: Dataset, ratio: float = utils.DEFAULT_RATIO):
-                 
-        data = utils.read_csv(file_path)
-        np.random.shuffle(data)
+    def __str__(self):
+        """
+        Print summary of the model.
 
+        Parameters: None
+        Returns:
+            str: The summary of the model
+        """
+        return f"{utils.BOLD_INFO}MP train: {utils.INFO}Model metrics:\n" \
+                f"  - Hidden Layers: {self.layers}\n" \
+                f"  - Learning Rate: {self.eta}\n" \
+                f"  - Epochs: {self.epochs}\n" \
+                f"  - Batch Size: {self.batch_size}\n" \
+                f"  - L2 Regularization: {self.decay}{utils.NC}"
+
+    def _split_data(self, file_path: Dataset, ratio: float = utils.DEFAULT_RATIO):
+        """
+        Private method to split the data into training and validation sets.
+
+        Parameters:
+            file_path (str): The path to the dataset file.
+            ratio (float): The ratio of training data, default to utils.DEFAULT_RATIO.
+        Returns:
+            Dataset: The training dataset.
+            Dataset: The validation dataset.
+        """
+        # Read the data from the file
+        data = utils.read_csv(file_path)
+        
+        # Split the data into Malignant and Benign classes
         data_m = data[data[:, 1] == 'M']
         data_b = data[data[:, 1] == 'B']
 
+        # Calculate the number of samples for each class based on the ratio
         train_size_m = int(len(data_m) * ratio)
         train_size_b = int(len(data_b) * ratio)
 
+        # Split the data into training and validation sets
         data_m_train = data_m[:train_size_m]
         data_m_val = data_m[train_size_m:] if len(data_m) > train_size_m else data_m_train
 
+        # Split the data into training and validation sets
         data_b_train = data_b[:train_size_b]
         data_b_val = data_b[train_size_b:] if len(data_b) > train_size_b else data_b_train
 
+        # Combine the training and validation sets
         train_data = np.concatenate((data_m_train, data_b_train))
         val_data = np.concatenate((data_m_val, data_b_val))
 
+        # Shuffle the data and return the datasets
         np.random.shuffle(train_data)
         np.random.shuffle(val_data)
-
         return Dataset("train", train_data), Dataset("validation", val_data)
     
 
     def _init_weights(self):
+        """
+        Private method to initialize the weights and biases for the model.
+
+        Parameters: None
+        Returns:
+            np.ndarray: The weights for the 1st hidden layer.
+            np.ndarray: The biases for the 1st hidden layer.
+            np.ndarray: The weights for the 2nd hidden layer.
+            np.ndarray: The biases for the 2nd hidden layer.
+            np.ndarray: The weights for the output layer.
+            np.ndarray: The biases for the output layer.
+        """
 
         # Initialize 1st hidden layer weights and biases
         weightH1 = np.random.randn(self.layers[0], self.train_data.features.shape[1]) * np.sqrt(2 / self.train_data.features.shape[1])
@@ -170,7 +222,19 @@ class MLP:
 
     
     def _update_weights(self, x, z1, z2, delta_1, delta_2, delta_Out):
+        """
+        Private method to update the weights and biases using backpropagation.
 
+        Parameters:
+            x (np.ndarray): The input features.
+            z1 (np.ndarray): The output of the 1st hidden layer.
+            z2 (np.ndarray): The output of the 2nd hidden layer.
+            delta_1 (np.ndarray): The gradient of the error for the 1st hidden layer.
+            delta_2 (np.ndarray): The gradient of the error for the 2nd hidden layer.
+            delta_Out (np.ndarray): The gradient of the error for the output layer.
+        Returns: None
+        """
+        # Clip gradients to prevent exploding gradients
         delta_1 = np.clip(delta_1, -10, 10)
         delta_2 = np.clip(delta_2, -10, 10)
         delta_Out = np.clip(delta_Out, -10, 10)
@@ -184,12 +248,33 @@ class MLP:
         self.biasOut -= self.eta * delta_Out
 
     def _forward_propagation(self, x):
+        """
+        Private method to perform forward propagation on the model.
+
+        Parameters:
+            x (np.ndarray): The input features.
+        Returns:
+            np.ndarray: The output of the 1st hidden layer.
+            np.ndarray: The output of the 2nd hidden layer.
+            np.ndarray: The predicted probabilities.
+        """
         z1 = utils.relu_data(np.dot(self.weightH1, x) + self.bias1)
         z2 = utils.relu_data(np.dot(self.weightH2, z1) + self.bias2)
         y_pred = utils.softmax_data(np.dot(self.weightOut.T, z2) + self.biasOut)
         return z1, z2, y_pred
 
     def _backward_propagation(self, delta_Out, z2, z1):
+        """
+        Private method to perform backward propagation on the model.
+
+        Parameters:
+            delta_Out (np.ndarray): The gradient of the error for the output layer.
+            z2 (np.ndarray): The output of the 2nd hidden layer.
+            z1 (np.ndarray): The output of the 1st hidden layer.
+        Returns:
+            np.ndarray: The gradient of the error for the 1st hidden layer.
+            np.ndarray: The gradient of the error for the 2nd hidden layer.
+        """
         # Compute delta_2: the gradient of the error for the second hidden layer
         # delta_Out has shape (2,) and self.weightOut has shape (2, 24), so delta_2 will have shape (24,)
         delta_2 = np.dot(self.weightOut, delta_Out) * utils.relu_data(z2, der=True)  # Transpose self.weightOut for correct dimensions
@@ -200,10 +285,22 @@ class MLP:
         return delta_1, delta_2
 
     def _train_batch(self, X_batch, Y_batch):
+        """
+        Private method to train the model on a mini-batch of data.
+
+        Parameters:
+            X_batch (np.ndarray): The input features for the mini-batch.
+            Y_batch (np.ndarray): The labels for the mini-batch.
+        Returns:
+            float: The loss for the mini-batch.
+            int: The number of correct predictions.
+            int: The total number of predictions.
+        """
         batch_loss = 0
         correct_predictions = 0
         total_predictions = 0
 
+        # Loop through the mini-batch
         for j in range(len(X_batch)):
             x = X_batch[j]
             y_true = Y_batch[j]
@@ -233,9 +330,15 @@ class MLP:
 
         return batch_loss, correct_predictions, total_predictions
 
-
-
     def _train_epoch(self):
+        """
+        Private method to train the model on a full epoch of data.
+
+        Parameters: None
+        Returns:
+            float: The loss for the epoch.
+            float: The accuracy for the epoch.
+        """
         epoch_loss = 0
         correct_predictions = 0
         total_predictions = 0
@@ -257,9 +360,15 @@ class MLP:
         train_accuracy = correct_predictions / total_predictions
         return epoch_loss / (self.train_data.features.shape[0] // self.batch_size), train_accuracy
 
-
-   
     def _validate_epoch(self):
+        """
+        Private method to validate the model on the validation data.
+
+        Parameters: None
+        Returns:
+            float: The loss for the validation set.
+            float: The accuracy for the validation set.
+        """
         val_loss = 0
         val_correct_predictions = 0
         val_total_predictions = 0
@@ -285,11 +394,21 @@ class MLP:
     
 
     def train(self):
+        """
+        Method to trains the model on the training data and validates on the validation data.
+
+        Parameters: None
+        Returns: None
+        """
+        print(f"{utils.BOLD_INFO}MP train: {utils.INFO}Training model:{utils.NC}")
+
         # Initialize weights and biases
         self.weightH1, self.bias1, self.weightH2, self.bias2, self.weightOut, self.biasOut = self._init_weights()
 
-        highest_val_accuracy = 0
-        lowest_val_loss = float('inf')
+        highest_val_accuracy = {'value': 0, 'epoch': 0}
+        lowest_val_loss = {'value': float('inf'), 'epoch': 0}
+        highest_train_accuracy = {'value': 0, 'epoch': 0}
+        lowest_train_loss = {'value': float('inf'), 'epoch': 0}
 
         # Training over epochs
         for epoch in range(self.epochs):
@@ -299,12 +418,22 @@ class MLP:
             # 2. Calculate validation loss (without updating weights)
             val_loss, val_accuracy = self._validate_epoch()
 
-            # 3. Track the best model based on validation performance
-            if val_accuracy > highest_val_accuracy:
-                highest_val_accuracy = val_accuracy
+            # 3. Track the best model based on training and validation performance
+            if val_accuracy > highest_val_accuracy['value']:
+                highest_val_accuracy['value'] = val_accuracy
+                highest_val_accuracy['epoch'] = epoch + 1
 
-            if val_loss < lowest_val_loss:
-                lowest_val_loss = val_loss
+            if val_loss < lowest_val_loss['value']:
+                lowest_val_loss['value'] = val_loss
+                lowest_val_loss['epoch'] = epoch + 1
+            
+            if train_accuracy > highest_train_accuracy['value']:
+                highest_train_accuracy['value'] = train_accuracy
+                highest_train_accuracy['epoch'] = epoch + 1
+            
+            if epoch_loss < lowest_train_loss['value']:
+                lowest_train_loss['value'] = epoch_loss
+                lowest_train_loss['epoch'] = epoch + 1
 
             # 4. Store the metrics for plotting
             self.train_loss_history.append(epoch_loss)
@@ -315,12 +444,20 @@ class MLP:
             # 5. Print metrics for the current epoch
             self.train_metrics(epoch, epoch_loss, train_accuracy, val_loss, val_accuracy)
 
-        print("Training complete")
-        print(f"Highest Validation Accuracy: {highest_val_accuracy:.4f}")
-        print(f"Lowest Validation Loss: {lowest_val_loss:.6f}")
-
+        print(f"{utils.BOLD_INFO}MP train: {utils.INFO}Training complete{utils.NC}")
+        
+        # Print final metrics
+        self.train_final_metrics(highest_val_accuracy, lowest_val_loss, highest_train_accuracy, lowest_train_loss)
 
     def train_plot(self, plot_path: str = utils.DEFAULT_PLOT_PATH):
+        """
+        Method to plot the training and validation metrics, this includes loss and accuracy.
+
+        Parameters:
+            plot_path (str): The path to save the plot, default to utils.DEFAULT_PLOT_PATH.
+        Returns: None
+        """
+
         # Plot metrics
         plt.figure(figsize=(12, 6))
 
@@ -349,20 +486,63 @@ class MLP:
         if not os.path.exists(os.path.dirname(plot_path)):
             os.makedirs(os.path.dirname(plot_path))
         plt.savefig(plot_path)
-        print(f"MP train: Plot saved to {plot_path}")
+        print(f"{utils.BOLD_INFO}MP train: {utils.INFO}Plot saved to {plot_path}{utils.NC}")
 
     def train_metrics(self, epoch: int, epoch_loss: float, train_accuracy: float, val_loss: float, val_accuracy: float):
-        print(f"MP train: Epoch {epoch+1}/{self.epochs}, "
-                  f"Train Loss: {epoch_loss:.6f}, Train Accuracy: {train_accuracy:.4f}, "
-                  f"Val Loss: {val_loss:.6f}, Val Accuracy: {val_accuracy:.4f}")
+        """
+        Method to print the training metrics for the current epoch.
+
+        Parameters:
+            epoch (int): The current epoch.
+            epoch_loss (float): The loss for the current epoch.
+            train_accuracy (float): The accuracy for the training data.
+            val_loss (float): The loss for the validation data.
+            val_accuracy (float): The accuracy for the validation data.
+        Returns: None
+        """
+        print(f"{utils.BOLD_INFO}MP train: {utils.INFO}Epoch {epoch+1}/{self.epochs} "
+                  f"Train Loss: {epoch_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, "
+                  f"Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}{utils.NC}")
+
+    def train_final_metrics(self, highest_val_accuracy, lowest_val_loss, highest_train_accuracy, lowest_train_loss):
+        """
+        Method to print the final training metrics.
+
+        Parameters:
+            highest_val_accuracy (dict): The highest validation accuracy and epoch.
+            lowest_val_loss (dict): The lowest validation loss and epoch.
+            highest_train_accuracy (dict): The highest training accuracy and epoch.
+            lowest_train_loss (dict): The lowest training loss and epoch.
+        Returns: None
+        """
+        print(f"\n{self}")
+        print(f"\n{utils.BOLD_INFO}MP train: {utils.INFO}Training metrics:")
+        print(f"  - Highest Validation Accuracy {highest_val_accuracy['value']:.4f} at Epoch {highest_val_accuracy['epoch']}")
+        print(f"  - Lowest Validation Loss {lowest_val_loss['value']:.6f} at Epoch {lowest_val_loss['epoch']}")
+        print(f"  - tHighest Training Accuracy {highest_train_accuracy['value']:.4f} at Epoch {highest_train_accuracy['epoch']}")
+        print(f"  - Lowest Training Loss {lowest_train_loss['value']:.6f} at Epoch {lowest_train_loss['epoch']}{utils.NC}\n")
 
     def save_model(self, model_path: str = utils.DEFAULT_MODEL_PATH):
+        """
+        Method to save the model weights and biases to a file.
+
+        Parameters:
+            model_path (str): The path to save the model, default to utils.DEFAULT_MODEL_PATH.
+        Returns: None
+        """
         if not os.path.exists(os.path.dirname(model_path)):
             os.makedirs(os.path.dirname(model_path))
         np.savez(model_path, w1=self.weightH1, b1=self.bias1, w2=self.weightH2, b2=self.bias2, wOut=self.weightOut, bOut=self.biasOut)
-        print(f"MP save: Model saved to {model_path}")
+        print(f"{utils.BOLD_INFO}MP train: {utils.INFO}Model saved to {model_path}{utils.NC}")
     
     def load_model(self, model_path: str = utils.DEFAULT_MODEL_PATH):
+        """
+        Method to load the model weights and biases from a file.
+        
+        Parameters:
+            model_path (str): The path to load the model from, default to utils.DEFAULT_MODEL_PATH. 
+        Returns: None
+        """
         model_data = np.load(model_path)
 
         self.weightH1 = model_data['w1']
@@ -371,9 +551,16 @@ class MLP:
         self.bias2 = model_data['b2']
         self.weightOut = model_data['wOut']
         self.biasOut = model_data['bOut']
-        print(f"MP load: Model loaded from {model_path}")
+        print(f"{utils.BOLD_INFO}MP predict: {utils.INFO}Model loaded from {model_path}{utils.NC}")
 
-    def predict(self, X_test):
+    def predict(self, X_test, Y_test):
+        """
+        Method to predict the labels for the test data.
+
+        Parameters:
+            X_test (np.ndarray): The test data to predict on.
+        Returns: None
+        """
         predictions = []
 
         # Loop in all the test samples
@@ -391,30 +578,25 @@ class MLP:
             predictions.append(np.argmax(y))
         
         self.predictions = np.array(predictions)
-        print("MP predict: Predictions completed")
+        print(f"{utils.BOLD_INFO}MP predict: {utils.INFO}Predictions completed{utils.NC}")
 
-    def predict_plot(self, Y_test, cm_path: str = utils.DEFAULT_CONFUSION_MATRIX_PATH):
-        # Calculate confusion matrix
-        cm = confusion_matrix(Y_test, self.predictions  )
+        # Print metrics
+        self._predict_metrics(Y_test, X_test)
 
-        # Plot the confusion matrix as a heatmap
-        plt.figure(figsize=(6, 5))
-        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=['Class 0', 'Class 1'], yticklabels=['Class 0', 'Class 1'])
-        plt.title("Confusion Matrix")
-        plt.xlabel("Predicted")
-        plt.ylabel("Truth")
+    def _predict_metrics(self, Y_test, X_test):
+        """
+        Private method to calculate and print the accuracy and binary cross-entropy loss for the predictions.
 
-        if not os.path.exists(os.path.dirname(cm_path)):
-            os.makedirs(os.path.dirname(cm_path))
-        plt.savefig(cm_path)
-        print(f"MP predict: Confusion matrix saved to {cm_path}")
+        Parameters:
+            Y_test (np.ndarray): The true labels for the test data.
+            X_test (np.ndarray): The test data to predict on.
+        Returns: None
+        """
 
-    def predict_metrics(self, Y_test, X_test):
         cm = confusion_matrix(Y_test, self.predictions)
 
         # Calculate accuracy
         accuracy = np.sum(np.diag(cm)) / np.sum(cm)
-        print(f"MP predict: Accuracy {accuracy:.4f}")
 
         # Initialize an array to store predicted probabilities
         predicted_probs = np.zeros(Y_test.shape)
@@ -429,12 +611,50 @@ class MLP:
 
         # Calculate binary cross-entropy error
         bce_error = utils.binary_cross_entropy_data(Y_test, predicted_probs)
-        print(f"MP predict: Binary Cross-Entropy Loss {bce_error:.6f}")
+        
+        # Print the metrics
+        print(f"\n{utils.BOLD_INFO}MP predict: {utils.INFO}Predictions metrics:")
+        print(f"  - Accuracy: {accuracy:.4f}")
+        print(f"  - Binary Cross-Entropy Loss: {bce_error:.6f}{utils.NC}\n")
 
+
+
+    def predict_plot(self, Y_test, cm_path: str = utils.DEFAULT_CONFUSION_MATRIX_PATH):
+        """
+        Method to plot the confusion matrix for the predictions.
+
+        Parameters:
+            Y_test (np.ndarray): The true labels for the test data.
+            cm_path (str): The path to save the confusion matrix plot, default to utils.DEFAULT_CONFUSION_MATRIX_PATH.
+        Returns: None
+        """
+        
+        # Calculate confusion matrix
+        cm = confusion_matrix(Y_test, self.predictions  )
+
+        # Plot the confusion matrix as a heatmap
+        plt.figure(figsize=(6, 5))
+        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=['Class 0', 'Class 1'], yticklabels=['Class 0', 'Class 1'])
+        plt.title("Confusion Matrix")
+        plt.xlabel("Predicted")
+        plt.ylabel("Truth")
+
+        if not os.path.exists(os.path.dirname(cm_path)):
+            os.makedirs(os.path.dirname(cm_path))
+        plt.savefig(cm_path)
+        print(f"{utils.BOLD_INFO}MP predict: {utils.INFO}Confusion Matrix saved to {cm_path}{utils.NC}")
 
     def save_predictions(self, path: str = utils.DEFAULT_PREDICTIONS_PATH):
+        """
+        Method to save the predictions to a file.
+
+        Parameters:
+            path (str): The path to save the predictions, default to utils.DEFAULT_PREDICTIONS_PATH.
+        Returns: None
+        """
+        
         if not os.path.exists(os.path.dirname(path)):
             os.makedirs(os.path.dirname(path))
         labelled_predictions = np.where(self.predictions == 1, 'M', 'B')
         np.savetxt(utils.DEFAULT_PREDICTIONS_PATH, labelled_predictions, delimiter=",", comments='', fmt="%s")
-        print(f"MP predict: Predictions saved to {utils.DEFAULT_PREDICTIONS_PATH}")
+        print(f"{utils.BOLD_INFO}MP predict: {utils.INFO}Predictions saved to {path}{utils.NC}")

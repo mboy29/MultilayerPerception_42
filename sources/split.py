@@ -39,25 +39,18 @@ def split_data(data: np.ndarray, ratio: float = utils.DEFAULT_RATIO) -> tuple:
         np.ndarray: The testing set.
     """
 
-    print(f"MP split: Shuffling data set")
     np.random.shuffle(data)
 
-    print(f"MP split: Splitting data set into Malignant and Benign")
     data_m = data[data[:, 1] == 'M']
     data_b = data[data[:, 1] == 'B']
-    print(f"MP split: Splitting data set into training and testing")
 
     # Perform the split for both malignant and benign data
     train_m, test_m = split_manually(data_m, ratio=ratio)
     train_b, test_b = split_manually(data_b, ratio=ratio)
 
-    print(f"MP split: Combining training and testing sets")
-
     # Concatenate the corresponding sets
     train = np.concatenate((train_m, train_b))
     test = np.concatenate((test_m, test_b))
-
-    print(f"MP split: Shuffling training and testing sets")
 
     # Shuffle the resulting sets
     np.random.shuffle(train)
@@ -77,13 +70,13 @@ def split(dataset: str, ratio: float) -> None:
     """
     try:
         data = utils.read_csv(dataset)
-        print(f"MP split: Splitting dataset...")
+        print(f"{utils.BOLD_INFO}MP split: {utils.INFO}Splitting dataset from '{dataset}'{utils.NC}")
         train, test = split_data(data, ratio=ratio)
         
         # Save the datasets to the specified paths
         utils.save_csv(train, utils.DEFAULT_TRAIN_PATH)
         utils.save_csv(test, utils.DEFAULT_TEST_PATH)
         
-        print(f"MP split: Splitting complete, training and testing sets saved to '{utils.DEFAULT_DATASETS_DIR_PATH}' directory")
+        print(f"{utils.BOLD_INFO}MP split: {utils.INFO}Splitting complete, training and testing sets saved to '{utils.DEFAULT_DATASETS_DIR_PATH}' directory{utils.NC}")
     except Exception as e:
         raise Exception(f"split: error: {e}")
