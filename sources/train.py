@@ -3,7 +3,7 @@ import sources.utils as utils
 # https://www.kaggle.com/code/androbomb/simple-nn-with-python-multi-layer-perceptron?select=test.csv
 # Training function
 
-def train(train_path, 
+def train(train_path: str = utils.DEFAULT_TRAIN_PATH,
           layers_size: list = utils.DEFAULT_LAYERS, 
           eta: float = utils.DEFAULT_LEARNING_RATE,
           epochs: int = utils.DEFAULT_EPOCHS,

@@ -143,4 +143,8 @@ def parse() -> argparse.Namespace:
     predict_parser.add_argument("-d", "--data_path", type=str, required=False, help=f"Path to the CSV file containing the testing set (default: '{utils.DEFAULT_TEST_PATH}')", default=utils.DEFAULT_TEST_PATH)
     predict_parser.add_argument("-cm", "--confusion_matrix", action="store_true", help="Display the confusion matrix")
 
+    # Sub-parser for the "compare" command
+    compare_parser = subparsers.add_parser("compare", help="Compare the predictions with the actual labels")
+    compare_parser.add_argument("-dt", "--data_train_path", type=str, required=False, help=f"Path to the CSV file containing the testing set (default: '{utils.DEFAULT_TEST_PATH}')", default=utils.DEFAULT_TEST_PATH)
+    compare_parser.add_argument("-dp", "--data_predict_path", type=str, required=False, help=f"Path to the CSV file containing the predictions (default: '{utils.DEFAULT_TEST_PATH}')", default=utils.DEFAULT_TEST_PATH)
     return parser.parse_args()

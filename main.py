@@ -15,6 +15,8 @@ def main():
         utils.train(args.data_path, args.layers_size, args.learning_rate, args.epochs, args.batch_size, args.regulation, args.early_stopping, args.patience)
     elif args.command == "predict":
         utils.predict(args.data_path, args.confusion_matrix)
+    elif args.command == "compare":
+        utils.compare(args.data_train_path, args.data_predict_path)
     else:
         raise ValueError(f"Unknown command: {args.command}")
 

@@ -162,7 +162,7 @@ class MLP:
         Returns:
             str: The summary of the model
         """
-        string: str = f"{utils.BOLD_INFO}MP train: {utils.INFO}Model metrics:\n" \
+        string: str = f"{utils.INFO}Model metrics:\n" \
                 f"  - Hidden Layers: {self.layers}\n" \
                 f"  - Learning Rate: {self.eta}\n" \
                 f"  - Epochs: {self.epochs}\n" \
@@ -534,7 +534,7 @@ class MLP:
         # Loss plot
         plt.subplot(1, 2, 1)
         plt.plot(range(1, epoch + 1), self.train_loss_history, 'b', label='Train Loss')
-        plt.plot(range(1, epoch + 1), self.val_loss_history, 'r', label='Validation Loss')
+        plt.plot(range(1, epoch + 1), self.val_loss_history, 'r', label='Validation Loss', linestyle='--')
         plt.title(f'Train vs Validation Loss {"(with early stopping)" if self.early_stopping else ""}')
         plt.xlabel('Epoch')
         plt.ylabel('Loss')
@@ -544,7 +544,7 @@ class MLP:
         # Accuracy plot
         plt.subplot(1, 2, 2)
         plt.plot(range(1, epoch + 1), self.train_accuracy_history, 'b', label='Train Accuracy')
-        plt.plot(range(1, epoch + 1), self.val_accuracy_history, 'r', label='Validation Accuracy')
+        plt.plot(range(1, epoch + 1), self.val_accuracy_history, 'r', label='Validation Accuracy', linestyle='--')
         plt.title(f'Train vs Validation Accuracy {"(with early stopping)" if self.early_stopping else ""}')
         plt.xlabel('Epoch')
         plt.ylabel('Accuracy')
@@ -585,7 +585,7 @@ class MLP:
             lowest_train_loss (dict): The lowest training loss and epoch.
         Returns: None
         """
-        print(f"\n{self}")
+        print(f"\n{utils.BOLD_INFO}MP train: {utils.INFO}{self}")
         print(f"\n{utils.BOLD_INFO}MP train: {utils.INFO}Training metrics:")
         print(f"  - Highest Validation Accuracy {highest_val_accuracy['value']:.4f} at Epoch {highest_val_accuracy['epoch']}")
         print(f"  - Lowest Validation Loss {lowest_val_loss['value']:.6f} at Epoch {lowest_val_loss['epoch']}")
@@ -650,8 +650,11 @@ class MLP:
         self.predictions = np.array(predictions)
         print(f"{utils.BOLD_INFO}MP predict: {utils.INFO}Predictions completed{utils.NC}")
 
-        # Print metrics
-        self._predict_metrics(Y_test, X_test)
+        # Print metricss
+        accuracy, bce_error = self._predict_metrics(Y_test, X_test)
+
+        # Return the predictions, accuracy, and binary cross-entropy error
+        return self.predictions, accuracy, bce_error
 
     def _predict_metrics(self, Y_test, X_test):
         """
@@ -684,10 +687,10 @@ class MLP:
         
         # Print the metrics
         print(f"\n{utils.BOLD_INFO}MP predict: {utils.INFO}Predictions metrics:")
-        print(f"  - Accuracy: {accuracy:.4f}")
-        print(f"  - Binary Cross-Entropy Loss: {bce_error:.6f}{utils.NC}\n")
+        print(f"  - Accuracy: {accuracy:.2f}")
+        print(f"  - Binary Cross-Entropy Loss: {bce_error:.4f}{utils.NC}\n")
 
-
+        return accuracy, bce_error
 
     def predict_plot(self, Y_test, cm_path: str = utils.DEFAULT_CONFUSION_MATRIX_PATH):
         """
