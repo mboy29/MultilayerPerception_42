@@ -1,8 +1,3 @@
-import os
-import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix
 import sources.utils as utils
 
 def compare_init_config_input(prompt: str, default_value):
