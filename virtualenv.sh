@@ -47,7 +47,7 @@ activate_venv() {
     python3 -m pip install --upgrade pip setuptools wheel > /dev/null 2>&1
     
     echo "${INFO}[INFO] Installing requirements...${NC}"
-    python3 -m pip install -r requirements.txt --no-cache-dir --force-reinstall > /dev/null 2>&1
+    python3 -m pip install -r requirements.txt --no-cache-dir --force-reinstall
     if [ $? -eq 0 ]; then
         echo "${SUCCESS}[SUCCESS] Requirements installed successfully!${NC}"
     else

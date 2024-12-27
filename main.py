@@ -16,7 +16,7 @@ def main():
     elif args.command == "predict":
         utils.predict(args.data_path, args.confusion_matrix)
     elif args.command == "compare":
-        utils.compare(args.data_train_path, args.data_predict_path)
+        utils.compare(args.data_train_path, args.data_predict_path, args.train_only, args.predict_only)
     else:
         raise ValueError(f"Unknown command: {args.command}")
 

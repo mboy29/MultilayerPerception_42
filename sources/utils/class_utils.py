@@ -111,7 +111,8 @@ class MLP:
                  batch_size: int = utils.DEFAULT_BATCH_SIZE, 
                  regulation: float = utils.DEFAULT_REGULATION, 
                  early_stopping: bool = utils.DEFAULT_EARLY_STOPPING, 
-                 patience: int = utils.DEFAULT_PATIENCE):
+                 patience: int = utils.DEFAULT_PATIENCE,
+                 copy_from: 'MLP' = None):
         """
         Initializes the Multi-Layer Perceptron (MLP) model with hyperparameters.
 
@@ -127,7 +128,11 @@ class MLP:
         Returns: None
         """
         # Initialize attributes
-        self.train_data, self.val_data = self._split_data(data_path) if data_path else (None, None)
+        if copy_from:
+            self.train_data = copy_from.train_data
+            self.val_data = copy_from.val_data
+        else:
+            self.train_data, self.val_data = self._split_data(data_path) if data_path else (None, None)
         self.layers = layers
         self.eta = eta
         self.epochs = epochs
@@ -151,6 +156,12 @@ class MLP:
         self.train_accuracy_history = []
         self.val_loss_history = []
         self.val_accuracy_history = []
+
+        # Initialize best and worst metrics
+        self.highest_val_accuracy = {'value': 0, 'epoch': 0}
+        self.lowest_val_loss = {'value': float('inf'), 'epoch': 0}
+        self.highest_train_accuracy = {'value': 0, 'epoch': 0}
+        self.lowest_train_loss = {'value': float('inf'), 'epoch': 0}
 
         self.predictions = None
 
@@ -453,11 +464,6 @@ class MLP:
         # Initialize weights and biases
         self.weightH1, self.bias1, self.weightH2, self.bias2, self.weightOut, self.biasOut = self._init_weights()
 
-        highest_val_accuracy = {'value': 0, 'epoch': 0}
-        lowest_val_loss = {'value': float('inf'), 'epoch': 0}
-        highest_train_accuracy = {'value': 0, 'epoch': 0}
-        lowest_train_loss = {'value': float('inf'), 'epoch': 0}
-
         # Early stopping variables
         self.best_weights = None
         self.no_improvement_epochs = 0
@@ -471,18 +477,18 @@ class MLP:
             val_loss, val_accuracy = self._validate_epoch()
 
             # Track training accuracy and loss
-            if train_accuracy > highest_train_accuracy['value']:
-                highest_train_accuracy['value'] = train_accuracy
-                highest_train_accuracy['epoch'] = epoch + 1
+            if train_accuracy > self.highest_train_accuracy['value']:
+                self.highest_train_accuracy['value'] = train_accuracy
+                self.highest_train_accuracy['epoch'] = epoch + 1
             
-            if epoch_loss < lowest_train_loss['value']:
-                lowest_train_loss['value'] = epoch_loss
-                lowest_train_loss['epoch'] = epoch + 1
+            if epoch_loss < self.lowest_train_loss['value']:
+                self.lowest_train_loss['value'] = epoch_loss
+                self.lowest_train_loss['epoch'] = epoch + 1
 
             # Track validation accuracy
-            if val_accuracy > highest_val_accuracy['value']:
-                highest_val_accuracy['value'] = val_accuracy
-                highest_val_accuracy['epoch'] = epoch + 1
+            if val_accuracy > self.highest_val_accuracy['value']:
+                self.highest_val_accuracy['value'] = val_accuracy
+                self.highest_val_accuracy['epoch'] = epoch + 1
 
             # 4. Store metrics for plotting
             self.train_loss_history.append(epoch_loss)
@@ -494,7 +500,7 @@ class MLP:
             self.train_metrics(epoch, epoch_loss, train_accuracy, val_loss, val_accuracy)
 
             # Early stopping check
-            if self._early_stopping(val_loss, lowest_val_loss, epoch):
+            if self._early_stopping(val_loss, self.lowest_val_loss, epoch):
                 break
         
         # Set the epoch limit for early stopping
@@ -512,7 +518,7 @@ class MLP:
         print(f"{utils.BOLD_INFO}MP train: {utils.INFO}Training complete.{utils.NC}")
 
         # Print final metrics
-        self.train_final_metrics(highest_val_accuracy, lowest_val_loss, highest_train_accuracy, lowest_train_loss)
+        self.train_final_metrics()
 
 
     def train_plot(self, plot_path: str = utils.DEFAULT_PLOT_PATH):
@@ -574,7 +580,7 @@ class MLP:
                   f"Train Loss: {epoch_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, "
                   f"Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}{utils.NC}")
 
-    def train_final_metrics(self, highest_val_accuracy, lowest_val_loss, highest_train_accuracy, lowest_train_loss):
+    def train_final_metrics(self):
         """
         Method to print the final training metrics.
 
@@ -587,10 +593,10 @@ class MLP:
         """
         print(f"\n{utils.BOLD_INFO}MP train: {utils.INFO}{self}")
         print(f"\n{utils.BOLD_INFO}MP train: {utils.INFO}Training metrics:")
-        print(f"  - Highest Validation Accuracy {highest_val_accuracy['value']:.4f} at Epoch {highest_val_accuracy['epoch']}")
-        print(f"  - Lowest Validation Loss {lowest_val_loss['value']:.6f} at Epoch {lowest_val_loss['epoch']}")
-        print(f"  - tHighest Training Accuracy {highest_train_accuracy['value']:.4f} at Epoch {highest_train_accuracy['epoch']}")
-        print(f"  - Lowest Training Loss {lowest_train_loss['value']:.6f} at Epoch {lowest_train_loss['epoch']}{utils.NC}\n")
+        print(f"  - Highest Validation Accuracy {self.highest_val_accuracy['value']:.4f} at Epoch {self.highest_val_accuracy['epoch']}")
+        print(f"  - Lowest Validation Loss {self.lowest_val_loss['value']:.6f} at Epoch {self.lowest_val_loss['epoch']}")
+        print(f"  - tHighest Training Accuracy {self.highest_train_accuracy['value']:.4f} at Epoch {self.highest_train_accuracy['epoch']}")
+        print(f"  - Lowest Training Loss {self.lowest_train_loss['value']:.6f} at Epoch {self.lowest_train_loss['epoch']}{utils.NC}\n")
 
     def save_model(self, model_path: str = utils.DEFAULT_MODEL_PATH):
         """
@@ -731,3 +737,135 @@ class MLP:
         labelled_predictions = np.where(self.predictions == 1, 'M', 'B')
         np.savetxt(utils.DEFAULT_PREDICTIONS_PATH, labelled_predictions, delimiter=",", comments='', fmt="%s")
         print(f"{utils.BOLD_INFO}MP predict: {utils.INFO}Predictions saved to {path}{utils.NC}")
+
+    def _train_compare_plot(models: list, plot_path: str = utils.DEFAULT_COMPARE_PLOT_PATH):
+        """
+        Private method that plots training and validation curves for all models.
+
+        Parameters:
+            models (list): A list of trained models.
+            plot_path (str): The path to save the plot, default to `DEFAULT_COMPARE_PLOT_PATH`.
+        Returns: None
+        """
+        plt.figure(figsize=(14, 7))
+
+        # Plot Loss and Accuracy curves
+        for i, model in enumerate(models):
+            epochs_range = range(len(model.train_loss_history))
+
+            plt.subplot(1, 2, 1)
+            plt.plot(epochs_range, model.train_loss_history, label=f'Model {i + 1} Train Loss')
+            plt.plot(epochs_range, model.val_loss_history, label=f'Model {i + 1} Validation Loss', linestyle='--')
+            plt.title("Train vs Validation Loss")
+            
+            plt.subplot(1, 2, 2)
+            plt.plot(epochs_range, model.train_accuracy_history, label=f'Model {i + 1} Train Accuracy')
+            plt.plot(epochs_range, model.val_accuracy_history, label=f'Model {i + 1} Validation Accuracy', linestyle='--')
+            plt.title("Train vs Validation Accuracy")
+
+        plt.tight_layout()
+        if not os.path.exists(os.path.dirname(plot_path)):
+            os.makedirs(os.path.dirname(plot_path))
+        plt.savefig(plot_path)
+        print(f"{utils.BOLD_INFO}MP compare: {utils.INFO}Comparison plot saved to '{plot_path}'{utils.NC}")
+
+
+    @staticmethod
+    def train_compare(models: list, verbose: bool = False):
+        """
+        Static method to make predictions using each trained model and track their metrics.
+
+        Parameters:
+            models (list): A list of trained models.
+            test_path (str): The path to the testing dataset.
+        Returns: None
+        """
+        print(f"{utils.BOLD_INFO}\nMP compare: {utils.INFO}Comparing models on their training...{utils.NC}")
+        for idx, model in enumerate(models):
+            
+            # Train the model
+            if not verbose:
+                utils.other_suppress_out()
+                model.train()
+                utils.other_restore_out()
+            else:
+                model.train()
+
+            # Output metrics
+            print(f"{utils.BOLD_INFO}MP compare: {utils.INFO}{idx + 1} {model}{utils.NC}")
+            print(f"{utils.INFO}  - Highest Validation Accuracy: {model.highest_val_accuracy['value']:.4f} at Epoch {model.highest_val_accuracy['epoch']}")
+            print(f"{utils.INFO}  - Lowest Validation Loss: {model.lowest_val_loss['value']:.6f} at Epoch {model.lowest_val_loss['epoch']}")
+            print(f"{utils.INFO}  - Highest Training Accuracy: {model.highest_train_accuracy['value']:.4f} at Epoch {model.highest_train_accuracy['epoch']}")
+            print(f"{utils.INFO}  - Lowest Training Loss: {model.lowest_train_loss['value']:.6f} at Epoch {model.lowest_train_loss['epoch']}{utils.NC}")
+
+        # Plot the comparison
+        MLP._train_compare_plot(models)
+            
+    def _predict_compare_plot(models: list, X_predict: np.ndarray, Y_predict: np.ndarray, plot_path: str = utils.DEFAULT_COMPARE_CONFUSION_MATRIX_PATH):
+        """
+        Plots confusion matrices for all models.
+
+        Parameters:
+            models (list): A list of trained models.
+            X_predict (np.ndarray): The features of the testing dataset.
+            Y_predict (np.ndarray): The labels of the testing dataset.
+            plot_path (str): The path to save the plot.
+        Returns: None
+        """
+        plt.figure(figsize=(10 * len(models), 8))
+        
+        for i, model in enumerate(models):
+            utils.other_suppress_out()
+            predictions, _, _ = model.predict(X_predict, Y_predict)
+            utils.other_restore_out()
+
+            cm = confusion_matrix(Y_predict, predictions)
+
+            plt.subplot(1, len(models), i + 1)
+            sns.heatmap(cm, annot=True, fmt='g', cmap='Blues', xticklabels=np.unique(Y_predict), yticklabels=np.unique(Y_predict))
+            plt.title(f"Model {i + 1}")
+            plt.xlabel('Predicted')
+            plt.ylabel('True')
+
+        plt.tight_layout()
+        if not os.path.exists(os.path.dirname(plot_path)):
+            os.makedirs(os.path.dirname(plot_path))
+        plt.savefig(plot_path)
+        plt.close()
+        print(f"{utils.BOLD_INFO}MP compare: {utils.INFO}Confusion matrix plot saved at: {plot_path}{utils.NC}")
+
+    @staticmethod
+    def predict_compare(models: list, test_path: str, verbose: bool = False) -> dict:
+        """
+        Makes predictions using each trained model and tracks their metrics.
+
+        Parameters:
+            models (list): A list of trained models.
+            test_path (str): The path to the testing dataset.
+        Returns: None
+        """
+        metrics = {}
+        data = utils.read_csv(test_path)
+        dataset = utils.Dataset("predict", data)
+        X_predict, Y_predict = dataset.features, dataset.labels
+
+        print(f"{utils.BOLD_INFO}\nMP compare: {utils.INFO}Comparing models on their predictions...{utils.NC}")
+
+        for idx, model in enumerate(models):
+            if not verbose:
+                utils.other_suppress_out()
+                predictions, accuracy, loss = model.predict(X_predict, Y_predict)
+                utils.other_restore_out()
+            else:
+                predictions, accuracy, loss = model.predict(X_predict, Y_predict)
+
+            metrics[f"Model {idx + 1}"] = {"predictions": predictions, "accuracy": accuracy, "loss": loss}
+
+            print(f"{utils.BOLD_INFO}MP compare: {utils.INFO}{idx + 1} {model}{utils.NC}")
+            print(f"{utils.INFO}  - Accuracy: {accuracy:.2f}{utils.NC}")
+            print(f"{utils.INFO}  - Loss: {loss:.4f}{utils.NC}")
+
+        MLP._predict_compare_plot(models, X_predict, Y_predict)
+        best_model_index = min(metrics, key=lambda x: metrics[x]['loss'])
+        print(f"\n{utils.BOLD_INFO}MP compare: {utils.INFO}Model {best_model_index} has the lowest loss: {metrics[best_model_index]['loss']:.4f}{utils.NC}")
+

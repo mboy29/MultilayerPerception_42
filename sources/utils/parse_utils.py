@@ -147,4 +147,6 @@ def parse() -> argparse.Namespace:
     compare_parser = subparsers.add_parser("compare", help="Compare the predictions with the actual labels")
     compare_parser.add_argument("-dt", "--data_train_path", type=str, required=False, help=f"Path to the CSV file containing the testing set (default: '{utils.DEFAULT_TEST_PATH}')", default=utils.DEFAULT_TEST_PATH)
     compare_parser.add_argument("-dp", "--data_predict_path", type=str, required=False, help=f"Path to the CSV file containing the predictions (default: '{utils.DEFAULT_TEST_PATH}')", default=utils.DEFAULT_TEST_PATH)
+    compare_parser.add_argument("-t", "--train_only", action="store_true", help="Only compare the models on their training", default=None)
+    compare_parser.add_argument("-p", "--predict_only", action="store_true", help="Only compare the models on their predictions", default=None)
     return parser.parse_args()
