@@ -225,36 +225,26 @@ class MLP:
         np.random.shuffle(val_data)
         return Dataset("train", train_data), Dataset("validation", val_data)
     
-
     def _init_weights(self):
         """
         Private method to initialize the weights and biases for the model.
 
         Parameters: None
-        Returns:
-            np.ndarray: The weights for the 1st hidden layer.
-            np.ndarray: The biases for the 1st hidden layer.
-            np.ndarray: The weights for the 2nd hidden layer.
-            np.ndarray: The biases for the 2nd hidden layer.
-            np.ndarray: The weights for the output layer.
-            np.ndarray: The biases for the output layer.
+        Returns: None
         """
 
         # Initialize 1st hidden layer weights and biases
-        weightH1 = np.random.randn(self.layers[0], self.train_data.features.shape[1]) * np.sqrt(2 / self.train_data.features.shape[1])
-        bias1 = np.random.rand(self.layers[0])
+        self.weightH1 = np.random.randn(self.layers[0], self.train_data.features.shape[1]) * np.sqrt(2 / self.train_data.features.shape[1])
+        self.bias1 = np.random.rand(self.layers[0])
 
         # Initialize 2nd hidden layer weights and biases
-        weightH2 = np.random.randn(self.layers[1], self.layers[0]) * np.sqrt(2 / self.layers[0])
-        bias2 = np.random.rand(self.layers[1])
+        self.weightH2 = np.random.randn(self.layers[1], self.layers[0]) * np.sqrt(2 / self.layers[0])
+        self.bias2 = np.random.rand(self.layers[1])
 
         # Initialize output layer weights and biases (2 units for softmax)
-        weightOut = np.random.randn(self.layers[1], 2) * np.sqrt(2 / self.layers[0])
-        biasOut = np.random.rand(2)  # 2 output units
+        self.weightOut = np.random.randn(self.layers[1], 2) * np.sqrt(2 / self.layers[0])
+        self.biasOut = np.random.rand(2)  # 2 output units
 
-        return weightH1, bias1, weightH2, bias2, weightOut, biasOut
-
-    
     def _update_weights(self, x, z1, z2, delta_1, delta_2, delta_Out):
         """
         Private method to update the weights and biases using backpropagation.
@@ -464,7 +454,7 @@ class MLP:
         print(f"{utils.BOLD_INFO}MP train: {utils.INFO}Training model with{'out' if not self.early_stopping else ''} early stopping:{utils.NC}")
 
         # Initialize weights and biases
-        self.weightH1, self.bias1, self.weightH2, self.bias2, self.weightOut, self.biasOut = self._init_weights()
+        self._init_weights()
 
         # Early stopping variables
         self.best_weights = None
