@@ -589,12 +589,15 @@ class MLP:
         """
         print(f"\n{utils.BOLD_INFO}MP train: {utils.INFO}{self}")
         print(f"\n{utils.BOLD_INFO}MP train: {utils.INFO}Training metrics:")
+        
         print(f"  - Lowest Training Loss {self.lowest_train_loss['value']:.6f} at Epoch {self.lowest_train_loss['epoch']}")
         if self.metrics:
             print(f"  - Highest Training Accuracy {self.highest_train_accuracy['value']:.4f} at Epoch {self.highest_train_accuracy['epoch']}")
         print(f"  - Lowest Validation Loss {self.lowest_val_loss['value']:.6f} at Epoch {self.lowest_val_loss['epoch']}{utils.NC}")
         if self.metrics:
             print(f"{utils.INFO}  - Highest Validation Accuracy {self.highest_val_accuracy['value']:.4f} at Epoch {self.highest_val_accuracy['epoch']}\n{utils.NC}")
+        else:
+            print()
 
     def save_model(self, model_path: str = utils.DEFAULT_MODEL_PATH):
         """
@@ -606,26 +609,22 @@ class MLP:
         """
         if not os.path.exists(os.path.dirname(model_path)):
             os.makedirs(os.path.dirname(model_path))
-        np.savez(model_path, w1=self.weightH1, b1=self.bias1, w2=self.weightH2, b2=self.bias2, wOut=self.weightOut, bOut=self.biasOut)
+        np.savez(model_path, model=self)
         print(f"{utils.BOLD_INFO}MP train: {utils.INFO}Model saved to {model_path}{utils.NC}")
     
-    def load_model(self, model_path: str = utils.DEFAULT_MODEL_PATH):
+    @staticmethod
+    def load_model(model_path: str = utils.DEFAULT_MODEL_PATH):
         """
-        Method to load the model weights and biases from a file.
+        Static method to load the model weights and biases from a file.
         
         Parameters:
             model_path (str): The path to load the model from, default to utils.DEFAULT_MODEL_PATH. 
         Returns: None
         """
-        model_data = np.load(model_path)
-
-        self.weightH1 = model_data['w1']
-        self.bias1 = model_data['b1']
-        self.weightH2 = model_data['w2']
-        self.bias2 = model_data['b2']
-        self.weightOut = model_data['wOut']
-        self.biasOut = model_data['bOut']
+        model_data = np.load(model_path, allow_pickle=True)
+        model = model_data['model'].item()
         print(f"{utils.BOLD_INFO}MP predict: {utils.INFO}Model loaded from {model_path}{utils.NC}")
+        return model
 
     def predict(self, X_test, Y_test):
         """
@@ -690,6 +689,7 @@ class MLP:
         bce_error = utils.binary_cross_entropy_data(Y_test, predicted_probs)
         
         # Print the metrics
+        print(f"\n{utils.BOLD_INFO}MP predict: {utils.INFO}{self}")
         print(f"\n{utils.BOLD_INFO}MP predict: {utils.INFO}Predictions metrics:")
         print(f"  - Accuracy: {accuracy:.2f}")
         print(f"  - Binary Cross-Entropy Loss: {bce_error:.4f}{utils.NC}\n")

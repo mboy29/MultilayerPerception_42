@@ -3,8 +3,7 @@ import sources.utils as utils
 def predict(test_path: str = utils.DEFAULT_TEST_PATH, cm: bool = False) -> None:
     try:
         # Load the saved model parameters
-        model = utils.MLP()
-        model.load_model()
+        model = utils.MLP.load_model()
 
         # Load the test dataset
 
