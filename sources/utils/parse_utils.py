@@ -139,9 +139,6 @@ def parse() -> argparse.Namespace:
     train_parser.add_argument("-p", "--patience", type=unint_parse, required=False, help="The patience for early stopping", default=utils.DEFAULT_PATIENCE)
     train_parser.add_argument("-n", "--nesterov", action="store_true", help="Enable Nesterov momentum", default=utils.DEFAULT_NESTEROV)
     train_parser.add_argument("-mo", "--momentum", type=unfloat_parse, required=False, help="The momentum for Nesterov", default=utils.DEFAULT_MOMENTUM)
-    train_parser.add_argument("-rm", "--rmsprop", action="store_true", help="Enable RMSprop", default=utils.DEFAULT_RMSPROP)
-    train_parser.add_argument("-b", "--beta", type=unfloat_parse, required=False, help="The beta for RMSprop", default=utils.DEFAULT_BETA)
-    train_parser.add_argument("-eps", "--epsilon", type=unfloat_parse, required=False, help="The epsilon for RMSprop", default=utils.DEFAULT_EPSILON)
     train_parser.add_argument("-m", "--metrics", action="store_true", help="Display additional metrics during and after training", default=utils.DEFAULT_METRICS)
 
     # Sub-parser for the "predict" command
@@ -155,4 +152,11 @@ def parse() -> argparse.Namespace:
     compare_parser.add_argument("-dp", "--data_predict_path", type=str, required=False, help=f"Path to the CSV file containing the predictions (default: '{utils.DEFAULT_TEST_PATH}')", default=utils.DEFAULT_TEST_PATH)
     compare_parser.add_argument("-t", "--train_only", action="store_true", help="Only compare the models on their training", default=None)
     compare_parser.add_argument("-p", "--predict_only", action="store_true", help="Only compare the models on their predictions", default=None)
+    
+    # Sub-parser for the "clean" command
+    clean_parser = subparsers.add_parser("clean", help="Clean the project directory")
+    clean_parser.add_argument("-t", "--train", action="store_true", help="Remove the training directory")
+    clean_parser.add_argument("-p", "--predict", action="store_true", help="Remove the predict directory")
+    clean_parser.add_argument("-c", "--compare", action="store_true", help="Remove the compare directory")
+    clean_parser.add_argument("-d", "--datasets", action="store_true", help="Remove the train and test datasets")
     return parser.parse_args()

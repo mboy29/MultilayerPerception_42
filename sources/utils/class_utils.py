@@ -114,9 +114,6 @@ class MLP:
                  patience: int = utils.DEFAULT_PATIENCE,
                  nesterov: bool = utils.DEFAULT_NESTEROV,
                  momentum: float = utils.DEFAULT_MOMENTUM,
-                 rmsprop: bool = utils.DEFAULT_RMSPROP,
-                 beta: float = utils.DEFAULT_BETA,
-                 epsilon: float = utils.DEFAULT_EPSILON,
                  metrics: bool = utils.DEFAULT_METRICS,
                  copy_from: 'MLP' = None):
         """
@@ -148,9 +145,6 @@ class MLP:
         self.patience = patience
         self.nesterov = nesterov
         self.momentum = momentum
-        self.rmsprop = rmsprop
-        self.beta = beta
-        self.epsilon = epsilon
         self.metrics = metrics
         
         # Initialize weights and biases (1st hidden layer, 2nd hidden layer, output layer)
@@ -172,16 +166,6 @@ class MLP:
             self.v_bias2 = None
             self.v_weightOut = None
             self.v_biasOut = None
-            self.gamma = self.momentum
-
-        # RMSprop variables
-        if self.rmsprop:
-            self.cache_weightH1 = None
-            self.cache_bias1 = None
-            self.cache_weightH2 = None
-            self.cache_bias2 = None
-            self.cache_weightOut = None
-            self.cache_biasOut = None
        
         # Initialize metrics
         self.train_loss_history = []
@@ -217,10 +201,6 @@ class MLP:
         string += f"{utils.INFO}\n  - Nesterov Momentum: {self.nesterov}{utils.NC}"
         if self.nesterov:
             string += f"{utils.INFO}\n  - Momentum: {self.momentum}{utils.NC}"
-        string += f"{utils.INFO}\n  - RMSprop: {self.rmsprop}{utils.NC}"
-        if self.rmsprop:
-            string += f"{utils.INFO}\n  - Beta: {self.beta}\n" \
-                        f"  - Epsilon: {self.epsilon}{utils.NC}"
         return string
 
     def _split_data(self, file_path: Dataset, ratio: float = utils.DEFAULT_RATIO):
@@ -262,19 +242,6 @@ class MLP:
         np.random.shuffle(val_data)
         return Dataset("train", train_data), Dataset("validation", val_data)
     
-    def _init_weights_rmsprop(self):
-        """
-        Private method to initialize the weights and biases for RMSprop.
-
-        Parameters: None
-        Returns: None
-        """
-        self.cache_weightH1 = np.zeros_like(self.weightH1)
-        self.cache_bias1 = np.zeros_like(self.bias1)
-        self.cache_weightH2 = np.zeros_like(self.weightH2)
-        self.cache_bias2 = np.zeros_like(self.bias2)
-        self.cache_weightOut = np.zeros_like(self.weightOut)
-        self.cache_biasOut = np.zeros_like(self.biasOut)
 
     def _init_weights_nesterov(self):
         """
@@ -319,8 +286,6 @@ class MLP:
         self._init_weights_standard()
         if self.nesterov:
             self._init_weights_nesterov()
-        if self.rmsprop:
-            self._init_weights_rmsprop()
 
     def _update_weights_standard(self, x, z1, z2, delta_1, delta_2, delta_Out):
         """
@@ -342,35 +307,6 @@ class MLP:
         self.bias2 -= self.eta * delta_2
         self.weightOut -= self.eta * (np.dot(z2[:, np.newaxis], delta_Out[:, np.newaxis].T) + self.regulation * self.weightOut)
         self.biasOut -= self.eta * delta_Out
-
-    def _update_weights_rmsprop(self, x, z1, z2, delta_1, delta_2, delta_Out):
-        """
-        Private method to update the weights and biases using RMSprop.
-
-        Parameters:
-            x (np.ndarray): The input features.
-            z1 (np.ndarray): The output of the 1st hidden layer.
-            z2 (np.ndarray): The output of the 2nd hidden layer.
-            delta_1 (np.ndarray): The gradient of the error for the 1st hidden layer.
-            delta_2 (np.ndarray): The gradient of the error for the 2nd hidden layer.
-            delta_Out (np.ndarray): The gradient of the error for the output layer.
-        Returns: None
-        """
-        # Apply RMSprop update rule
-        self.cache_weightH1 = self.beta * self.cache_weightH1 + (1 - self.beta) * np.outer(delta_1, x) ** 2
-        self.cache_bias1 = self.beta * self.cache_bias1 + (1 - self.beta) * delta_1 ** 2
-        self.cache_weightH2 = self.beta * self.cache_weightH2 + (1 - self.beta) * np.outer(delta_2, z1) ** 2
-        self.cache_bias2 = self.beta * self.cache_bias2 + (1 - self.beta) * delta_2 ** 2
-        self.cache_weightOut = self.beta * self.cache_weightOut + (1 - self.beta) * np.dot(z2[:, np.newaxis], delta_Out[:, np.newaxis].T) ** 2
-        self.cache_biasOut = self.beta * self.cache_biasOut + (1 - self.beta) * delta_Out ** 2
-
-        # Apply RMSprop update to the parameters
-        self.weightH1 -= self.eta * np.outer(delta_1, x) / (np.sqrt(self.cache_weightH1) + self.epsilon)
-        self.bias1 -= self.eta * delta_1 / (np.sqrt(self.cache_bias1) + self.epsilon)
-        self.weightH2 -= self.eta * np.outer(delta_2, z1) / (np.sqrt(self.cache_weightH2) + self.epsilon)
-        self.bias2 -= self.eta * delta_2 / (np.sqrt(self.cache_bias2) + self.epsilon)
-        self.weightOut -= self.eta * np.dot(z2[:, np.newaxis], delta_Out[:, np.newaxis].T) / (np.sqrt(self.cache_weightOut) + self.epsilon)
-        self.biasOut -= self.eta * delta_Out / (np.sqrt(self.cache_biasOut) + self.epsilon)
 
     def _update_weights_nesterov(self, x, z1, z2, delta_1, delta_2, delta_Out):
         """
@@ -394,58 +330,21 @@ class MLP:
         v_prev_biasOut = self.v_biasOut.copy()
 
         # Compute velocity updates
-        self.v_weightH1 = self.gamma * self.v_weightH1 - self.eta * (np.outer(delta_1, x) + self.regulation * self.weightH1)
-        self.v_bias1 = self.gamma * self.v_bias1 - self.eta * delta_1
-        self.v_weightH2 = self.gamma * self.v_weightH2 - self.eta * (np.outer(delta_2, z1) + self.regulation * self.weightH2)
-        self.v_bias2 = self.gamma * self.v_bias2 - self.eta * delta_2
-        self.v_weightOut = self.gamma * self.v_weightOut - self.eta * (np.dot(z2[:, np.newaxis], delta_Out[:, np.newaxis].T) + self.regulation * self.weightOut)
-        self.v_biasOut = self.gamma * self.v_biasOut - self.eta * delta_Out
+        self.v_weightH1 = self.momentum * self.v_weightH1 - self.eta * (np.outer(delta_1, x) + self.regulation * self.weightH1)
+        self.v_bias1 = self.momentum * self.v_bias1 - self.eta * delta_1
+        self.v_weightH2 = self.momentum * self.v_weightH2 - self.eta * (np.outer(delta_2, z1) + self.regulation * self.weightH2)
+        self.v_bias2 = self.momentum * self.v_bias2 - self.eta * delta_2
+        self.v_weightOut = self.momentum * self.v_weightOut - self.eta * (np.dot(z2[:, np.newaxis], delta_Out[:, np.newaxis].T) + self.regulation * self.weightOut)
+        self.v_biasOut = self.momentum * self.v_biasOut - self.eta * delta_Out
 
         # Apply Nesterov update
-        self.weightH1 += -self.gamma * v_prev_weightH1 + (1 + self.gamma) * self.v_weightH1
-        self.bias1 += -self.gamma * v_prev_bias1 + (1 + self.gamma) * self.v_bias1
-        self.weightH2 += -self.gamma * v_prev_weightH2 + (1 + self.gamma) * self.v_weightH2
-        self.bias2 += -self.gamma * v_prev_bias2 + (1 + self.gamma) * self.v_bias2
-        self.weightOut += -self.gamma * v_prev_weightOut + (1 + self.gamma) * self.v_weightOut
-        self.biasOut += -self.gamma * v_prev_biasOut + (1 + self.gamma) * self.v_biasOut
+        self.weightH1 += -self.momentum * v_prev_weightH1 + (1 + self.momentum) * self.v_weightH1
+        self.bias1 += -self.momentum * v_prev_bias1 + (1 + self.momentum) * self.v_bias1
+        self.weightH2 += -self.momentum * v_prev_weightH2 + (1 + self.momentum) * self.v_weightH2
+        self.bias2 += -self.momentum * v_prev_bias2 + (1 + self.momentum) * self.v_bias2
+        self.weightOut += -self.momentum * v_prev_weightOut + (1 + self.momentum) * self.v_weightOut
+        self.biasOut += -self.momentum * v_prev_biasOut + (1 + self.momentum) * self.v_biasOut
 
-    def _update_weigths_nesterov_rmsprop(self, x, z1, z2, delta_1, delta_2, delta_Out):
-        """
-        Private method to update the weights and biases using Nesterov momentum and RMSprop.
-
-        Parameters:
-            x (np.ndarray): The input features.
-            z1 (np.ndarray): The output of the 1st hidden layer.
-            z2 (np.ndarray): The output of the 2nd hidden layer.
-            delta_1 (np.ndarray): The gradient of the error for the 1st hidden layer.
-            delta_2 (np.ndarray): The gradient of the error for the 2nd hidden layer.
-            delta_Out (np.ndarray): The gradient of the error for the output layer.
-        Returns: None
-        """
-        # Update RMSprop caches (exponentially decaying averages of squared gradients)
-        self.cache_weightH1 = self.beta * self.cache_weightH1 + (1 - self.beta) * np.outer(delta_1, x) ** 2
-        self.cache_bias1 = self.beta * self.cache_bias1 + (1 - self.beta) * delta_1 ** 2
-        self.cache_weightH2 = self.beta * self.cache_weightH2 + (1 - self.beta) * np.outer(delta_2, z1) ** 2
-        self.cache_bias2 = self.beta * self.cache_bias2 + (1 - self.beta) * delta_2 ** 2
-        self.cache_weightOut = self.beta * self.cache_weightOut + (1 - self.beta) * np.dot(z2[:, np.newaxis], delta_Out[:, np.newaxis].T) ** 2
-        self.cache_biasOut = self.beta * self.cache_biasOut + (1 - self.beta) * delta_Out ** 2
-
-        # Apply Nesterov momentum with RMSprop-adapted learning rate
-        self.v_weightH1 = self.beta * self.v_weightH1 + (1 - self.beta) * np.outer(delta_1, x)
-        self.v_bias1 = self.beta * self.v_bias1 + (1 - self.beta) * delta_1
-        self.v_weightH2 = self.beta * self.v_weightH2 + (1 - self.beta) * np.outer(delta_2, z1)
-        self.v_bias2 = self.beta * self.v_bias2 + (1 - self.beta) * delta_2
-        self.v_weightOut = self.beta * self.v_weightOut + (1 - self.beta) * np.dot(z2[:, np.newaxis], delta_Out[:, np.newaxis].T)
-        self.v_biasOut = self.beta * self.v_biasOut + (1 - self.beta) * delta_Out
-
-        # Apply update with Nesterov look-ahead using RMSprop-adapted learning rate
-        self.weightH1 -= self.eta * self.v_weightH1 / (np.sqrt(self.cache_weightH1) + self.epsilon)
-        self.bias1 -= self.eta * self.v_bias1 / (np.sqrt(self.cache_bias1) + self.epsilon)
-        self.weightH2 -= self.eta * self.v_weightH2 / (np.sqrt(self.cache_weightH2) + self.epsilon)
-        self.bias2 -= self.eta * self.v_bias2 / (np.sqrt(self.cache_bias2) + self.epsilon)
-        self.weightOut -= self.eta * self.v_weightOut / (np.sqrt(self.cache_weightOut) + self.epsilon)
-        self.biasOut -= self.eta * self.v_biasOut / (np.sqrt(self.cache_biasOut) + self.epsilon)
-    
     def _update_weights(self, x, z1, z2, delta_1, delta_2, delta_Out):
         """
         Private method to update the weights and biases using backpropagation.
@@ -464,12 +363,8 @@ class MLP:
         delta_2 = np.clip(delta_2, -10, 10)
         delta_Out = np.clip(delta_Out, -10, 10)
 
-        if self.rmsprop and self.nesterov:
-            self._update_weigths_nesterov_rmsprop(x, z1, z2, delta_1, delta_2, delta_Out)
-        elif self.nesterov:
+        if self.nesterov:
             self._update_weights_nesterov(x, z1, z2, delta_1, delta_2, delta_Out)
-        elif self.rmsprop:
-            self._update_weights_rmsprop(x, z1, z2, delta_1, delta_2, delta_Out)
         else:
             self._update_weights_standard(x, z1, z2, delta_1, delta_2, delta_Out)
             
@@ -653,7 +548,7 @@ class MLP:
             patience (int): The number of consecutive epochs with no improvement on validation loss to stop training.
         Returns: None
         """
-        print(f"{utils.BOLD_INFO}MP train: {utils.INFO}Training model with{'out' if not self.early_stopping else ''} early stopping:{utils.NC}")
+        print(f"{utils.BOLD_INFO}MP train: {utils.INFO}Training model{' with early stopping and nesterov' if self.early_stopping and self.nesterov else ' with early stopping' if self.early_stopping else ' with nesterov' if self.nesterov else ''}:{utils.NC}")
 
         # Initialize weights and biases
         self._init_weights()

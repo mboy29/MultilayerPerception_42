@@ -58,8 +58,20 @@ def compare_init_config(train_path: str, copy_from: utils.MLP = None) -> utils.M
         str(utils.DEFAULT_PATIENCE)
     )) if early_stopping else 0
 
+    nesterov = compare_init_config_input(
+        f"{utils.BOLD_INFO}Enable early nesterov? (no/yes): {utils.NC}",
+        'no'
+    ).strip().lower() == 'yes'
+
+    momentum = float(compare_init_config_input(
+        f"{utils.BOLD_INFO}Enter momentum ranging from 0 to 1 (default {utils.DEFAULT_MOMENTUM}): {utils.NC}",
+        str(utils.DEFAULT_MOMENTUM)
+    )) if nesterov else 0
+    if momentum > 1:
+        raise ValueError("Momentum must be between 0 and 1.")
+
     return utils.MLP(data_path=train_path, layers=layers, eta=eta, epochs=epochs, batch_size=batch_size, 
-                     regulation=regulation, early_stopping=early_stopping, patience=patience, copy_from=copy_from)
+                     regulation=regulation, early_stopping=early_stopping, patience=patience, nesterov=nesterov, momentum=momentum, copy_from=copy_from)
 
 def compare_init(train_path: str):
     """

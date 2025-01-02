@@ -13,9 +13,6 @@ def train(train_path: str = utils.DEFAULT_TRAIN_PATH,
           patience: int = utils.DEFAULT_PATIENCE,
           nestrov: bool = utils.DEFAULT_NESTEROV,
           momentum: float = utils.DEFAULT_MOMENTUM,
-          rmsprop: bool = utils.DEFAULT_RMSPROP,
-          beta: float = utils.DEFAULT_BETA,
-          epsilon: float = utils.DEFAULT_EPSILON,
           metrics: bool = utils.DEFAULT_METRICS) -> None:
     """
     Trains the model using the training data.
@@ -23,8 +20,7 @@ def train(train_path: str = utils.DEFAULT_TRAIN_PATH,
     try:
         model = utils.MLP(train_path, layers_size, eta, epochs, batch_size, decay, 
                           early_stopping, patience, 
-                          nestrov, momentum, 
-                          rmsprop, beta, epsilon,
+                          nestrov, momentum,
                           metrics)
         model.train()
         model.train_plot()
