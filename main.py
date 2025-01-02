@@ -12,7 +12,11 @@ def main():
     if args.command == "split":
         utils.split(args.data_path, args.ratio)
     elif args.command == "train":
-        utils.train(args.data_path, args.layers_size, args.learning_rate, args.epochs, args.batch_size, args.regulation, args.early_stopping, args.patience, args.metrics)
+        utils.train(args.data_path, args.layers_size, args.learning_rate, args.epochs, args.batch_size, args.regulation, 
+                    args.early_stopping, args.patience, 
+                    args.nesterov, args.momentum, 
+                    args.rmsprop, args.beta, args.epsilon,
+                    args.metrics)
     elif args.command == "predict":
         utils.predict(args.data_path, args.confusion_matrix)
     elif args.command == "compare":

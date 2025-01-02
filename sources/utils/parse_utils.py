@@ -133,10 +133,15 @@ def parse() -> argparse.Namespace:
     train_parser.add_argument("-l", "--layers_size", type=list_parse, required=False,   help="The size of the 2 hidden layers", default=utils.DEFAULT_LAYERS)
     train_parser.add_argument("-eta", "--learning_rate", type=unfloat_parse, required=False, help="The learning rate of the model", default=utils.DEFAULT_LEARNING_RATE)
     train_parser.add_argument("-e", "--epochs", type=unint_parse, required=False, help="The number of epochs to train the model", default=utils.DEFAULT_EPOCHS)
-    train_parser.add_argument("-b", "--batch_size", type=unint_parse, required=False, help="The batch size to train the model", default=utils.DEFAULT_BATCH_SIZE)
+    train_parser.add_argument("-bs", "--batch_size", type=unint_parse, required=False, help="The batch size to train the model", default=utils.DEFAULT_BATCH_SIZE)
     train_parser.add_argument("-r", "--regulation", type=unfloat_parse, required=False, help="The decay of the model", default=utils.DEFAULT_REGULATION)
     train_parser.add_argument("-es", "--early_stopping", action="store_true", help="Enable early stopping")
     train_parser.add_argument("-p", "--patience", type=unint_parse, required=False, help="The patience for early stopping", default=utils.DEFAULT_PATIENCE)
+    train_parser.add_argument("-n", "--nesterov", action="store_true", help="Enable Nesterov momentum", default=utils.DEFAULT_NESTEROV)
+    train_parser.add_argument("-mo", "--momentum", type=unfloat_parse, required=False, help="The momentum for Nesterov", default=utils.DEFAULT_MOMENTUM)
+    train_parser.add_argument("-rm", "--rmsprop", action="store_true", help="Enable RMSprop", default=utils.DEFAULT_RMSPROP)
+    train_parser.add_argument("-b", "--beta", type=unfloat_parse, required=False, help="The beta for RMSprop", default=utils.DEFAULT_BETA)
+    train_parser.add_argument("-eps", "--epsilon", type=unfloat_parse, required=False, help="The epsilon for RMSprop", default=utils.DEFAULT_EPSILON)
     train_parser.add_argument("-m", "--metrics", action="store_true", help="Display additional metrics during and after training", default=utils.DEFAULT_METRICS)
 
     # Sub-parser for the "predict" command

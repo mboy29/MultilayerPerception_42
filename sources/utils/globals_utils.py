@@ -36,6 +36,13 @@ DEFAULT_REGULATION = 0.0025
 DEFAULT_EARLY_STOPPING = False
 DEFAULT_PATIENCE = 4
 
+DEFAULT_NESTEROV = False
+DEFAULT_MOMENTUM = 0.1
+
+DEFAULT_RMSPROP = False
+DEFAULT_BETA = 0.9
+DEFAULT_EPSILON = 1e-8
+
 DEFAULT_METRICS = False
 
 HEADER = f"{BOLD_INFO}\n----------------------------------------------------------------\n" \
