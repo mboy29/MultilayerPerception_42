@@ -112,6 +112,7 @@ class MLP:
                  regulation: float = utils.DEFAULT_REGULATION, 
                  early_stopping: bool = utils.DEFAULT_EARLY_STOPPING, 
                  patience: int = utils.DEFAULT_PATIENCE,
+                 metrics: bool = utils.DEFAULT_METRICS,
                  copy_from: 'MLP' = None):
         """
         Initializes the Multi-Layer Perceptron (MLP) model with hyperparameters.
@@ -140,6 +141,7 @@ class MLP:
         self.regulation = regulation
         self.early_stopping = early_stopping
         self.patience = patience
+        self.metrics = metrics
         
         # Early stopping variables
         self.early_stopping_epochs = None
@@ -497,7 +499,7 @@ class MLP:
             self.val_accuracy_history.append(val_accuracy)
 
             # 5. Print metrics for the current epoch
-            self.train_metrics(epoch, epoch_loss, train_accuracy, val_loss, val_accuracy)
+            self._train_metrics(epoch, epoch_loss, train_accuracy, val_loss, val_accuracy)
 
             # Early stopping check
             if self._early_stopping(val_loss, self.lowest_val_loss, epoch):
@@ -518,7 +520,7 @@ class MLP:
         print(f"{utils.BOLD_INFO}MP train: {utils.INFO}Training complete.{utils.NC}")
 
         # Print final metrics
-        self.train_final_metrics()
+        self._train_final_metrics()
 
 
     def train_plot(self, plot_path: str = utils.DEFAULT_PLOT_PATH):
@@ -564,7 +566,7 @@ class MLP:
         plt.savefig(plot_path)
         print(f"{utils.BOLD_INFO}MP train: {utils.INFO}Plot saved to {plot_path}{utils.NC}")
 
-    def train_metrics(self, epoch: int, epoch_loss: float, train_accuracy: float, val_loss: float, val_accuracy: float):
+    def _train_metrics(self, epoch: int, epoch_loss: float, train_accuracy: float, val_loss: float, val_accuracy: float):
         """
         Method to print the training metrics for the current epoch.
 
@@ -576,11 +578,15 @@ class MLP:
             val_accuracy (float): The accuracy for the validation data.
         Returns: None
         """
-        print(f"{utils.BOLD_INFO}MP train: {utils.INFO}Epoch {epoch+1}/{self.epochs} "
-                  f"Train Loss: {epoch_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, "
-                  f"Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}{utils.NC}")
+        if not self.metrics:
+            print(f"{utils.BOLD_INFO}MP train: {utils.INFO}Epoch {epoch+1}/{self.epochs} "
+                  f"Train Loss: {epoch_loss:.4f}, Val Loss: {val_loss:.4f}")
+        else:
+            print(f"{utils.BOLD_INFO}MP train: {utils.INFO}Epoch {epoch+1}/{self.epochs} "
+                    f"Train Loss: {epoch_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, "
+                    f"Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}{utils.NC}")
 
-    def train_final_metrics(self):
+    def _train_final_metrics(self):
         """
         Method to print the final training metrics.
 
@@ -593,10 +599,12 @@ class MLP:
         """
         print(f"\n{utils.BOLD_INFO}MP train: {utils.INFO}{self}")
         print(f"\n{utils.BOLD_INFO}MP train: {utils.INFO}Training metrics:")
-        print(f"  - Highest Validation Accuracy {self.highest_val_accuracy['value']:.4f} at Epoch {self.highest_val_accuracy['epoch']}")
-        print(f"  - Lowest Validation Loss {self.lowest_val_loss['value']:.6f} at Epoch {self.lowest_val_loss['epoch']}")
-        print(f"  - tHighest Training Accuracy {self.highest_train_accuracy['value']:.4f} at Epoch {self.highest_train_accuracy['epoch']}")
-        print(f"  - Lowest Training Loss {self.lowest_train_loss['value']:.6f} at Epoch {self.lowest_train_loss['epoch']}{utils.NC}\n")
+        print(f"  - Lowest Training Loss {self.lowest_train_loss['value']:.6f} at Epoch {self.lowest_train_loss['epoch']}")
+        if self.metrics:
+            print(f"  - Highest Training Accuracy {self.highest_train_accuracy['value']:.4f} at Epoch {self.highest_train_accuracy['epoch']}")
+        print(f"  - Lowest Validation Loss {self.lowest_val_loss['value']:.6f} at Epoch {self.lowest_val_loss['epoch']}{utils.NC}")
+        if self.metrics:
+            print(f"{utils.INFO}  - Highest Validation Accuracy {self.highest_val_accuracy['value']:.4f} at Epoch {self.highest_val_accuracy['epoch']}\n{utils.NC}")
 
     def save_model(self, model_path: str = utils.DEFAULT_MODEL_PATH):
         """

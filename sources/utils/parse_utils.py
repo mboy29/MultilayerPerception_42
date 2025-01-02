@@ -137,6 +137,7 @@ def parse() -> argparse.Namespace:
     train_parser.add_argument("-r", "--regulation", type=unfloat_parse, required=False, help="The decay of the model", default=utils.DEFAULT_REGULATION)
     train_parser.add_argument("-es", "--early_stopping", action="store_true", help="Enable early stopping")
     train_parser.add_argument("-p", "--patience", type=unint_parse, required=False, help="The patience for early stopping", default=utils.DEFAULT_PATIENCE)
+    train_parser.add_argument("-m", "--metrics", action="store_true", help="Display additional metrics during and after training", default=utils.DEFAULT_METRICS)
 
     # Sub-parser for the "predict" command
     predict_parser = subparsers.add_parser("predict", help="Predict the labels of the testing set using the trained model")

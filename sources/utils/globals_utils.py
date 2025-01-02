@@ -32,8 +32,11 @@ DEFAULT_LEARNING_RATE = 0.001
 DEFAULT_EPOCHS = 84
 DEFAULT_BATCH_SIZE = 8
 DEFAULT_REGULATION = 0.0025
+
 DEFAULT_EARLY_STOPPING = False
 DEFAULT_PATIENCE = 8
+
+DEFAULT_METRICS = False
 
 HEADER = f"{BOLD_INFO}\n----------------------------------------------------------------\n" \
         f"{INFO} __  __  __  __  __   ____  ____  __      __   _  _  ____  ____ \n" \
