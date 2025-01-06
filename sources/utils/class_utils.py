@@ -136,6 +136,7 @@ class MLP:
             self.val_data = copy_from.val_data
         else:
             self.train_data, self.val_data = self._split_data(data_path) if data_path else (None, None)
+        self.test_data = None
         self.layers = layers
         self.eta = eta
         self.epochs = epochs
@@ -242,6 +243,16 @@ class MLP:
         np.random.shuffle(val_data)
         return Dataset("train", train_data), Dataset("validation", val_data)
     
+    def _test_data(self, file_path: str):
+        """
+        Private method to load the test data.
+
+        Parameters:
+            file_path (str): The path to the test data file.
+        Returns: None
+        """
+        data = utils.read_csv(file_path)
+        self.test_data = Dataset("test", data)
 
     def _init_weights_nesterov(self):
         """
@@ -560,7 +571,7 @@ class MLP:
         # Training over epochs
         for epoch in range(self.epochs):
             # 1. Train the model on the training data
-            epoch_loss, train_accuracy = self._train_epoch()
+            train_loss, train_accuracy = self._train_epoch()
 
             # 2. Calculate validation loss and accuracy (without updating weights)
             val_loss, val_accuracy = self._validate_epoch()
@@ -570,8 +581,8 @@ class MLP:
                 self.highest_train_accuracy['value'] = train_accuracy
                 self.highest_train_accuracy['epoch'] = epoch + 1
             
-            if epoch_loss < self.lowest_train_loss['value']:
-                self.lowest_train_loss['value'] = epoch_loss
+            if train_loss < self.lowest_train_loss['value']:
+                self.lowest_train_loss['value'] = train_loss
                 self.lowest_train_loss['epoch'] = epoch + 1
 
             # Track validation accuracy
@@ -580,13 +591,13 @@ class MLP:
                 self.highest_val_accuracy['epoch'] = epoch + 1
 
             # 4. Store metrics for plotting
-            self.train_loss_history.append(epoch_loss)
+            self.train_loss_history.append(train_loss)
             self.train_accuracy_history.append(train_accuracy)
             self.val_loss_history.append(val_loss)
             self.val_accuracy_history.append(val_accuracy)
 
             # 5. Print metrics for the current epoch
-            self._train_metrics(epoch, epoch_loss, train_accuracy, val_loss, val_accuracy)
+            self._train_metrics(epoch, train_loss, train_accuracy, val_loss, val_accuracy)
 
             # Early stopping check
             if self._early_stopping(val_loss, self.lowest_val_loss, epoch):
@@ -653,13 +664,13 @@ class MLP:
         plt.savefig(plot_path)
         print(f"{utils.BOLD_INFO}MP train: {utils.INFO}Plot saved to {plot_path}{utils.NC}")
 
-    def _train_metrics(self, epoch: int, epoch_loss: float, train_accuracy: float, val_loss: float, val_accuracy: float):
+    def _train_metrics(self, epoch: int, train_loss: float, train_accuracy: float, val_loss: float, val_accuracy: float):
         """
         Method to print the training metrics for the current epoch.
 
         Parameters:
             epoch (int): The current epoch.
-            epoch_loss (float): The loss for the current epoch.
+            train_loss (float): The loss for the training data.
             train_accuracy (float): The accuracy for the training data.
             val_loss (float): The loss for the validation data.
             val_accuracy (float): The accuracy for the validation data.
@@ -667,10 +678,10 @@ class MLP:
         """
         if not self.metrics:
             print(f"{utils.BOLD_INFO}MP train: {utils.INFO}Epoch {epoch+1}/{self.epochs} "
-                  f"Train Loss: {epoch_loss:.4f}, Val Loss: {val_loss:.4f}")
+                  f"Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
         else:
             print(f"{utils.BOLD_INFO}MP train: {utils.INFO}Epoch {epoch+1}/{self.epochs} "
-                    f"Train Loss: {epoch_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, "
+                    f"Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, "
                     f"Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}{utils.NC}")
 
     def _train_final_metrics(self):
@@ -723,21 +734,24 @@ class MLP:
         print(f"{utils.BOLD_INFO}MP predict: {utils.INFO}Model loaded from {model_path}{utils.NC}")
         return model
 
-    def predict(self, X_test, Y_test):
+    def predict(self, test_path: str):
         """
         Method to predict the labels for the test data.
 
         Parameters:
-            X_test (np.ndarray): The test data to predict on.
+            test_path (str): The path to the test data file.
         Returns: None
         """
+        # Initialize test data
+        self._test_data(test_path)
+
         predictions = []
 
         # Loop in all the test samples
-        for I in range(0, X_test.shape[0]):  
+        for I in range(0, self.test_data.features.shape[0]):  
             
             # Input the data 
-            x = X_test[I]
+            x = self.test_data.features[I]
             
             # Feed forward
             z1 = utils.relu_data(np.dot(self.weightH1, x) + self.bias1)  # first hidden layer
@@ -751,39 +765,37 @@ class MLP:
         print(f"{utils.BOLD_INFO}MP predict: {utils.INFO}Predictions completed{utils.NC}")
 
         # Print metricss
-        accuracy, bce_error = self._predict_metrics(Y_test, X_test)
+        accuracy, bce_error = self._predict_metrics()
 
         # Return the predictions, accuracy, and binary cross-entropy error
         return self.predictions, accuracy, bce_error
 
-    def _predict_metrics(self, Y_test, X_test):
+    def _predict_metrics(self):
         """
         Private method to calculate and print the accuracy and binary cross-entropy loss for the predictions.
 
-        Parameters:
-            Y_test (np.ndarray): The true labels for the test data.
-            X_test (np.ndarray): The test data to predict on.
+        Parameters: None
         Returns: None
         """
 
-        cm = confusion_matrix(Y_test, self.predictions)
+        cm = confusion_matrix(self.test_data.labels, self.predictions)
 
         # Calculate accuracy
         accuracy = np.sum(np.diag(cm)) / np.sum(cm)
 
         # Initialize an array to store predicted probabilities
-        predicted_probs = np.zeros(Y_test.shape)
+        predicted_probs = np.zeros(self.test_data.labels.shape)
 
         # Calculate predicted probabilities (feed-forward through the model)
-        for i in range(X_test.shape[0]):
-            x = X_test[i]
+        for i in range(self.test_data.features.shape[0]):
+            x = self.test_data.features[i]
             z1 = utils.relu_data(np.dot(self.weightH1, x) + self.bias1)
             z2 = utils.relu_data(np.dot(self.weightH2, z1) + self.bias2)
             y_pred = utils.softmax_data(np.dot(self.weightOut.T, z2) + self.biasOut)
             predicted_probs[i] = y_pred[1]
 
         # Calculate binary cross-entropy error
-        bce_error = utils.binary_cross_entropy_data(Y_test, predicted_probs)
+        bce_error = utils.binary_cross_entropy_data(self.test_data.labels, predicted_probs)
         
         # Print the metrics
         print(f"\n{utils.BOLD_INFO}MP predict: {utils.INFO}{self}")
@@ -896,14 +908,12 @@ class MLP:
         # Plot the comparison
         MLP._train_compare_plot(models)
             
-    def _predict_compare_plot(models: list, X_predict: np.ndarray, Y_predict: np.ndarray, plot_path: str = utils.DEFAULT_COMPARE_CONFUSION_MATRIX_PATH):
+    def _predict_compare_plot(models: list, test_path: str, plot_path: str = utils.DEFAULT_COMPARE_CONFUSION_MATRIX_PATH):
         """
         Plots confusion matrices for all models.
 
         Parameters:
             models (list): A list of trained models.
-            X_predict (np.ndarray): The features of the testing dataset.
-            Y_predict (np.ndarray): The labels of the testing dataset.
             plot_path (str): The path to save the plot.
         Returns: None
         """
@@ -911,13 +921,13 @@ class MLP:
         
         for i, model in enumerate(models):
             utils.other_suppress_out()
-            predictions, _, _ = model.predict(X_predict, Y_predict)
+            predictions, _, _ = model.predict(test_path)
             utils.other_restore_out()
 
-            cm = confusion_matrix(Y_predict, predictions)
+            cm = confusion_matrix(model.test_data.labels, predictions)
 
             plt.subplot(1, len(models), i + 1)
-            sns.heatmap(cm, annot=True, fmt='g', cmap='Blues', xticklabels=np.unique(Y_predict), yticklabels=np.unique(Y_predict))
+            sns.heatmap(cm, annot=True, fmt='g', cmap='Blues', xticklabels=np.unique(model.test_data.labels), yticklabels=np.unique(model.test_data.labels))
             plt.title(f"Model {i + 1}")
             plt.xlabel('Predicted')
             plt.ylabel('True')
@@ -940,19 +950,16 @@ class MLP:
         Returns: None
         """
         metrics = {}
-        data = utils.read_csv(test_path)
-        dataset = utils.Dataset("predict", data)
-        X_predict, Y_predict = dataset.features, dataset.labels
 
         print(f"{utils.BOLD_INFO}\nMP compare: {utils.INFO}Comparing models on their predictions...{utils.NC}")
 
         for idx, model in enumerate(models):
             if not verbose:
                 utils.other_suppress_out()
-                predictions, accuracy, loss = model.predict(X_predict, Y_predict)
+                predictions, accuracy, loss = model.predict(test_path)
                 utils.other_restore_out()
             else:
-                predictions, accuracy, loss = model.predict(X_predict, Y_predict)
+                predictions, accuracy, loss = model.predict(test_path)
 
             metrics[f"Model {idx + 1}"] = {"predictions": predictions, "accuracy": accuracy, "loss": loss}
 
@@ -960,7 +967,7 @@ class MLP:
             print(f"{utils.INFO}  - Accuracy: {accuracy:.2f}{utils.NC}")
             print(f"{utils.INFO}  - Loss: {loss:.4f}{utils.NC}")
 
-        MLP._predict_compare_plot(models, X_predict, Y_predict)
+        MLP._predict_compare_plot(models, test_path)
         best_model_index = min(metrics, key=lambda x: metrics[x]['loss'])
         print(f"\n{utils.BOLD_INFO}MP compare: {utils.INFO}Model {best_model_index} has the lowest loss: {metrics[best_model_index]['loss']:.4f}{utils.NC}")
 

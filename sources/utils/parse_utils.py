@@ -59,6 +59,7 @@ class CustomArgumentParser(argparse.ArgumentParser):
 def list_parse(value: str) -> list:
     """
     Helper function to parse the layers argument into a list of integers.
+    Wanted format: [X, X]
 
     Parameters:
         value (str): The string value to parse.

@@ -2,7 +2,7 @@
 
 A Python implementation of a Multilayer Perceptron (MLP) that supports customizable configurations, including hyperparameters, training, evaluation, and comparison of models.
 
-### SetUp
+## SetUp
 
 Before running the program please make sure you activate the virtual environnment install all the necessary dependencies by running the following command :
 ```
@@ -11,7 +11,7 @@ source ./virtualenv.sh [--activate] [--deactivate]
  - Use --deactivate to deactivate virtual env.
 ```
 
-### Usage
+## Usage
 
 The main entry point of this project is main.py. 
 ```
@@ -108,3 +108,130 @@ The script supports multiple commands, each with its own set of parameters. Belo
         [-c, --compare]
         [-d, --datasets]
     ```
+
+## Fundamental Concepts 
+
+### Multilayer Perceptron (MLP)
+
+A Multilayer Perceptron is a type of neural network that consists of:
+- **Input Layer**: Accepts input features.
+- **Hidden Layers**: Processes data with weights, biases, and activations.
+- **Output Layer**: Produces predictions.
+
+Each neuron computes:
+- z = W ⋅ X + b
+- a = Activation(z)
+
+---
+
+### Core Concepts in MLP Training
+
+#### Feedforwarding
+- Data flows **forward** through the network: Input → Hidden Layers → Output.
+- Produces predictions: y_pred = Softmax(W ⋅ X + b)
+
+
+#### Backpropagation
+- Adjusts weights and biases by propagating **errors backward**.
+- Uses the gradient of the loss with respect to weights to optimize parameters.
+
+#### Gradient Descent
+- A method to minimize the **loss function** (error between predictions and labels): θ ← θ - η ⋅ ∇J(θ)
+    - `θ`: Parameters (weights and biases).
+    - `η`: Learning rate.
+    - `∇J(θ)`: Gradient of the loss function  
+
+---
+
+### Matrices in MLP
+
+A **matrix** is a mathematical structure that represents data in a grid of rows and columns. In the context of MLP, matrices are used to represent sets of weights and inputs, allowing for efficient computations in the forward and backward passes.
+
+1. **Weights Matrix**: Represents connections between neurons, with dimensions based on the number of inputs and outputs. Each entry in the matrix is a weight that adjusts the strength of the connection between two neurons.
+  
+2. **Bias Vector**: A bias vector is a set of values added to the weighted sum at each neuron, shifting the output of the neuron and allowing the network to learn more complex patterns.
+
+3. **Forward Propagation**:
+    - **z = W ⋅ X + b**: This represents the weighted sum of the inputs (`X`) with the weights (`W`) and the bias (`b`).
+    - **a = Activation(z)**: The activation function (like ReLU or Sigmoid) is applied to the weighted sum to introduce non-linearity.
+
+4. **Backpropagation**: Uses gradients (calculated using matrices) to update the weights and biases to minimize the loss and improve the model.
+
+---
+
+### Key Training Concepts
+
+#### A Batch While Training
+- A **batch** is a small subset of the training data used in one training step.
+- In `_train_batch`:
+1. Perform **forward propagation** to compute predictions.
+2. Compute **loss and gradients**.
+3. Update **weights and biases**.
+
+#### An Epoch While Training
+- An **epoch** processes the entire dataset once.
+- In `_train_epoch`:
+1. The dataset is split into mini-batches.
+2. Each batch is trained sequentially.
+3. After processing all batches, compute:
+  - **Average loss**.
+  - **Accuracy** across all batches.
+
+#### L2 Regularization
+- Prevents overfitting by penalizing large weights: J_reg = J_loss + λ ⋅ Σ(W^2)
+    - `λ`: Regularization strength.
+
+#### Early Stopping / Patience
+- Stops training when the **validation loss** stops improving for a set number of epochs (patience).
+- Prevents overfitting by halting at the optimal point.
+
+### Evaluation and Loss Functions
+
+#### Binary Cross-Entropy (BCE)
+- A loss function for binary classification tasks: BCE = -1/N Σ [y_i ⋅ log(ŷ_i) + (1 - y_i) ⋅ log(1 - ŷ_i)]
+- Penalizes incorrect predictions more heavily.
+
+## Softmax vs. Sigmoid
+1. **Sigmoid**:
+    - Maps values to probabilities in the range `[0, 1]`.
+    - Used for **binary classification**.
+    ```
+    σ(x) = 1 / (1 + e^(-x))
+    ```
+2. **Softmax**:
+    - Converts outputs to probabilities that **sum to 1**.
+    - Used for **multi-class classification**.
+    ```
+    Softmax(x_i) = e^(x_i) / Σ(e^(x_j)) for all j
+    ```
+
+
+---
+
+### Advanced Optimization Techniques
+
+#### Overfitting
+- Happens when the model learns the training data too well (including noise) and fails to generalize.
+- **Symptoms**:
+- High accuracy on training data.
+- Poor accuracy on validation/testing data.
+- **Mitigation**:
+- Use regularization (e.g., L2 regularization).
+- Apply early stopping.
+- Add more data or use data augmentation.
+
+#### Nesterov Momentum
+- An improvement over standard momentum by adding a **lookahead step**:
+1. **Look ahead** to estimate the position:
+   ```
+   θ_lookahead = θ + μ ⋅ v_(t-1)
+   ```
+2. Compute gradient at this position:
+   ```
+   v_t = μ ⋅ v_(t-1) - η ⋅ ∇J(θ_lookahead)
+   ```
+3. Update the weights:
+   ```
+   θ ← θ + v_t
+   ```
+- **Benefit**: Helps converge faster and avoids overshooting.
