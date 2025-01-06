@@ -125,7 +125,7 @@ def parse() -> argparse.Namespace:
     # Sub-parser for the "split" command
     split_parser = subparsers.add_parser("split", help="Split the dataset into training and testing sets")
     split_parser.add_argument("-d", "--data_path", type=str, required=False, help=f"Path to the CSV file containing the dataset (default: '{utils.DEFAULT_DATASET_PATH}')", default=utils.DEFAULT_DATASET_PATH)
-    split_parser.add_argument("-r", "--ratio", type=float, required=False, help="The ratio of data to be included in the training set", default=utils.DEFAULT_RATIO)
+    split_parser.add_argument("-r", "--ratio", type=unfloat_parse, required=False, help="The ratio of data to be included in the training set", default=utils.DEFAULT_RATIO)
 
     # Sub-parser for the "train" command
     train_parser = subparsers.add_parser("train", help="Train the multilayer perceptron model")
@@ -144,10 +144,10 @@ def parse() -> argparse.Namespace:
     # Sub-parser for the "predict" command
     predict_parser = subparsers.add_parser("predict", help="Predict the labels of the testing set using the trained model")
     predict_parser.add_argument("-d", "--data_path", type=str, required=False, help=f"Path to the CSV file containing the testing set (default: '{utils.DEFAULT_TEST_PATH}')", default=utils.DEFAULT_TEST_PATH)
-    predict_parser.add_argument("-cm", "--confusion_matrix", action="store_true", help="Display the confusion matrix")
+    predict_parser.add_argument("-cm", "--confusion_matrix", action="store_true", help="Creates the confusion matrix")
 
     # Sub-parser for the "compare" command
-    compare_parser = subparsers.add_parser("compare", help="Compare the predictions with the actual labels")
+    compare_parser = subparsers.add_parser("compare", help="Compares multiple models on their training and predictions")
     compare_parser.add_argument("-dt", "--data_train_path", type=str, required=False, help=f"Path to the CSV file containing the testing set (default: '{utils.DEFAULT_TEST_PATH}')", default=utils.DEFAULT_TEST_PATH)
     compare_parser.add_argument("-dp", "--data_predict_path", type=str, required=False, help=f"Path to the CSV file containing the predictions (default: '{utils.DEFAULT_TEST_PATH}')", default=utils.DEFAULT_TEST_PATH)
     compare_parser.add_argument("-t", "--train_only", action="store_true", help="Only compare the models on their training", default=None)
