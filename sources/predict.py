@@ -1,6 +1,14 @@
 import sources.utils as utils
 
 def predict(test_path: str = utils.DEFAULT_TEST_PATH, cm: bool = False) -> None:
+    """
+    Predict the labels of the test dataset using the saved model.
+
+    Parameters:
+        test_path (str): The path to the test dataset.
+        cm (bool): Whether to display the confusion matrix or not.
+    Returns: None
+    """
     try:
         # Load the saved model parameters
         model = utils.MLP.load_model()

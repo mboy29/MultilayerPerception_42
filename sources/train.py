@@ -16,6 +16,20 @@ def train(train_path: str = utils.DEFAULT_TRAIN_PATH,
           metrics: bool = utils.DEFAULT_METRICS) -> None:
     """
     Trains the model using the training data.
+
+    Parameters:
+        train_path (str): The path to the training dataset.
+        layers_size (list): The size of each layer in the network.
+        eta (float): The learning rate.
+        epochs (int): The number of epochs.
+        batch_size (int): The batch size.
+        decay (float): The decay rate.
+        early_stopping (bool): Whether to use early stopping or not.
+        patience (int): The patience for early stopping.
+        nestrov (bool): Whether to use nestrov or not.
+        momentum (float): The momentum.
+        metrics (bool): Whether to display the metrics or not.
+    Returns: None
     """
     try:
         model = utils.MLP(train_path, layers_size, eta, epochs, batch_size, decay, 
