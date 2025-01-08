@@ -39,20 +39,19 @@ def split_data(data: np.ndarray, ratio: float = utils.DEFAULT_RATIO) -> tuple:
         np.ndarray: The testing set.
     """
 
-    np.random.shuffle(data)
-
+    # Separate data into 'M' and 'B' based on the second column (label)
     data_m = data[data[:, 1] == 'M']
     data_b = data[data[:, 1] == 'B']
 
-    # Perform the split for both malignant and benign data
+    # Stratified split for malignant ('M') and benign ('B') samples
     train_m, test_m = split_manually(data_m, ratio=ratio)
     train_b, test_b = split_manually(data_b, ratio=ratio)
 
-    # Concatenate the corresponding sets
+    # Combine the splits from both classes
     train = np.concatenate((train_m, train_b))
     test = np.concatenate((test_m, test_b))
 
-    # Shuffle the resulting sets
+    # Shuffle the final train and test sets to remove any ordering
     np.random.shuffle(train)
     np.random.shuffle(test)
 
