@@ -1,238 +1,218 @@
-# MULTILAYER PERCEPTRON
+<div align="center">
 
-A Python implementation of a Multilayer Perceptron (MLP) that supports customizable configurations, including hyperparameters, training, evaluation, and comparison of models.
+# Multilayer Perceptron
 
-### SetUp
+**A neural network built from scratch in Python and NumPy, no ML framework, to classify breast tumours as malignant or benign.**
 
-Before running the program please make sure you activate the virtual environnment install all the necessary dependencies by running the following command :
+![Python](https://img.shields.io/badge/Python-3-CCDBFD?style=for-the-badge&logo=python&logoColor=1f3b70)
+![NumPy](https://img.shields.io/badge/NumPy-from%20scratch-CFE1B9?style=for-the-badge&logo=numpy&logoColor=2d4a1e)
+![Accuracy](https://img.shields.io/badge/Test%20accuracy-~98%25-FFADC2?style=for-the-badge)
+![42 Nice](https://img.shields.io/badge/42-Nice-2b2b2b?style=for-the-badge)
+
+</div>
+
+---
+
+## Overview
+
+This project implements a **multilayer perceptron (MLP)** end to end: data split, training, prediction and model comparison, all driven from a single command-line tool. Forward propagation, backpropagation, the loss and the optimisers are written by hand with NumPy matrices. Libraries are only used for data loading (pandas), plots (matplotlib, seaborn) and the confusion matrix (scikit-learn).
+
+The model is trained on the **Wisconsin Diagnostic Breast Cancer** dataset: 569 samples, 30 numerical features computed from cell nuclei images, and a binary label (`M` malignant, `B` benign).
+
+| Feature | Details |
+|---|---|
+| **Architecture** | Input layer → 2 configurable hidden layers (**ReLU**) → **softmax** output |
+| **Training** | Mini-batch gradient descent, backpropagation |
+| **Optimiser** | Plain gradient descent or **Nesterov momentum** |
+| **Regularisation** | **L2** weight penalty and **early stopping** with patience |
+| **Loss** | Binary cross-entropy |
+| **Outputs** | Learning curves, predictions CSV, confusion matrix, model comparison plots |
+
+---
+
+## Results
+
+With the default hyperparameters (layers `8, 8`, learning rate `0.001`, batch size `8`, L2 `0.0025`), the model reaches **about 98% accuracy on the test set** (95 to 98% across random splits), with a binary cross-entropy loss around **0.05 to 0.07**.
+
+---
+
+## Setup
+
+```sh
+source ./virtualenv.sh              # create the virtualenv and install dependencies
+source ./virtualenv.sh --deactivate # remove it
 ```
-source ./virtualenv.sh [--activate] [--deactivate]
- - Use --activate or no argument to activate virtual env.
- - Use --deactivate to deactivate virtual env.
+
+Dependencies: `pandas`, `matplotlib`, `seaborn`, `scikit-learn` (see `requirements.txt`).
+
+---
+
+## Quick start
+
+```sh
+python3 -B main.py split            # 1. split datasets/data.csv into train.csv and test.csv
+python3 -B main.py train -m         # 2. train the model and show metrics
+python3 -B main.py predict          # 3. evaluate it on the test set
 ```
 
-### Usage
+---
 
-The main entry point of this project is main.py. 
+## Commands
+
+<details>
+<summary><b>split</b> - split the dataset into training and testing sets</summary>
+
+```sh
+python3 -B main.py split [-r RATIO] [-d DATA_PATH]
 ```
-python3 -B main.py
+
+| Option | Description | Default |
+|---|---|---|
+| `-r`, `--ratio` | Share of the data kept for training | `0.7` |
+| `-d`, `--data_path` | CSV file to split | `datasets/data.csv` |
+
+</details>
+
+<details>
+<summary><b>train</b> - train the multilayer perceptron</summary>
+
+```sh
+python3 -B main.py train [-d DATA_PATH] [-l LAYERS] [-eta LR] [-e EPOCHS] [-bs BATCH]
+                         [-r L2] [-es] [-p PATIENCE] [-n] [-mo MOMENTUM] [-m]
 ```
 
-The script supports multiple commands, each with its own set of parameters. Below is a detailed guide to the available commands.
+| Option | Description | Default |
+|---|---|---|
+| `-d`, `--data_path` | Training set | `datasets/train.csv` |
+| `-l`, `--layers_size` | Size of the 2 hidden layers | `8, 8` |
+| `-eta`, `--learning_rate` | Learning rate | `0.001` |
+| `-e`, `--epochs` | Number of epochs | `84` |
+| `-bs`, `--batch_size` | Mini-batch size | `8` |
+| `-r`, `--regulation` | L2 regularisation strength | `0.0025` |
+| `-es`, `--early_stopping` | Enable early stopping | off |
+| `-p`, `--patience` | Early stopping patience (epochs) | `4` |
+| `-n`, `--nesterov` | Enable Nesterov momentum | off |
+| `-mo`, `--momentum` | Momentum coefficient | `0.9` |
+| `-m`, `--metrics` | Show detailed metrics during and after training | off |
 
-- Split: Split the dataset into training and testing sets
+Saves the model to `train/model.npz`, the scaler to `train/scaler.pkl` and the learning curves to `train/plot.png`.
 
-    - `-h`, `--help`: Show a help message
-    - `-r`, `--ratio RATIO`: The ratio of data to be included in the training set
-    - `-d`, `--data_path DATA_PATH`: Path to the CSV file containing the dataset (default: 'datasets/data.csv')
+</details>
 
-    ```
-    python3 -B main.py split 
-        [-h, --help] 
-        [-r, --ratio <unfloat>] 
-        [-d, --data_path <string>]
-    ```
+<details>
+<summary><b>predict</b> - evaluate the trained model</summary>
 
-- Train: Train the multilayer perceptron model
+```sh
+python3 -B main.py predict [-d DATA_PATH] [-cm]
+```
 
-    - `-h`, `--help`: Show a help message
-    - `-d`, `--data_path DATA_PATH`: Path to the CSV file containing the training set (default: 'datasets/train.csv')
-    - `-l`, `--layers_size LAYERS_SIZE`: The size of the 2 hidden layers (e.g.: 4, 4)
-    - `-eta`, `--learning_rate LEARNING_RATE`: The learning rate of the model
-    - `-e`, `--epochs EPOCHS`: The number of epochs to train the model
-    - `-bs`, `--batch_size BATCH_SIZE`: The batch size to train the model
-    - `-r`, `--regulation REGULATION`: The decay of the model
-    - `-es`, `--early_stopping`: Enable early stopping
-    - `-p`, `--patience PATIENCE`: The patience for early stopping
-    - `-n`, `--nesterov`: Enable Nesterov momentum
-    - `-mo`, `--momentum MOMENTUM`: The momentum for Nesterov
-    - `-m`, `--metrics`: Display additional metrics during and after training
+| Option | Description | Default |
+|---|---|---|
+| `-d`, `--data_path` | Testing set | `datasets/test.csv` |
+| `-cm`, `--confusion_matrix` | Also save the confusion matrix | off |
 
-    ```
-    python3 -B main.py train 
-        [-h, --help] 
-        [-d, --data_path <string>]
-        [-l, --layers_size <list>]
-        [-eta, --learning_rate <unfloat>]
-        [-bs, --batch_size <unint>]
-        [-r, --regulation <unfloat>]
-        [-es, --early_stopping]
-        [-n, --nesterov]
-        [-mo, --momentum <unfloat>]
-        [-m, --metrics]
-    ```
+Saves predictions to `predict/predictions.csv`.
 
-- Predict: Predict the labels of the testing set using the trained model
+</details>
 
-    - `-h`, `--help`: Show a help message
-    - `-d`, `--data_path DATA_PATH`: Path to the CSV file containing the testing set (default: 'datasets/test.csv')
-    - `cm`, `--confusion_matrix`: Create the confusion matrix
+<details>
+<summary><b>compare</b> - compare several models</summary>
 
-    ```
-    python3 -B main.py predict 
-        [-h, --help] 
-        [-d, --data_path <string>]
-        [-cm, --confusion_matrix]
-    ```
+```sh
+python3 -B main.py compare [-dt DATA_TRAIN_PATH] [-dp DATA_PREDICT_PATH] [-t] [-p]
+```
 
-- Compare: Compares multiple models on their training and predictions
+| Option | Description |
+|---|---|
+| `-dt`, `--data_train_path` | Dataset used for the training comparison |
+| `-dp`, `--data_predict_path` | Dataset used for the prediction comparison |
+| `-t`, `--train_only` | Compare training only |
+| `-p`, `--predict_only` | Compare predictions only |
 
-    - `-h`, `--help`: Show a help message
-    - `-dt`, `--data_train_path DATA_TRAIN_PATH`: Path to the CSV file containing the testing set (default: 'datasets/test.csv')
-    - `-dp`, `--data_predict_path DATA_PREDICT_PATH`: Path to the CSV file containing the predictions (default: 'datasets/test.csv')
-    - `-t`, `--train_only`: Only compare the models on their training
-    - `-p`, `--predict_only`: Only compare the models on their predictions
+Plots are saved in `compare/`.
 
-    ```
-    python3 -B main.py clean 
-        [-h, --help] 
-        [-dt, --data_train_path <string>]
-        [-dp, --data_predict_path <string>]
-        [-t, --train_only]
-        [-p, --predict_only]
-    ```
+</details>
 
-- Clean: Clean the project directory
+<details>
+<summary><b>clean</b> - remove generated files</summary>
 
-    - `-h`, `--help`: Show a help message
-    - `-t`, `--train`: Remove the training directory
-    - `-p`, `--predict`: Remove the predict directory
-    - `-c`, `--compare`: Remove the compare directory
-    - `-d`, `--datasets`: Remove the train and test datasets
+```sh
+python3 -B main.py clean [-t] [-p] [-c] [-d]
+```
 
-    ```
-    python3 -B main.py clean 
-        [-h, --help] 
-        [-t, --train]
-        [-p, --predict]
-        [-c, --compare]
-        [-d, --datasets]
-    ```
+| Option | Removes |
+|---|---|
+| `-t`, `--train` | `train/` |
+| `-p`, `--predict` | `predict/` |
+| `-c`, `--compare` | `compare/` |
+| `-d`, `--datasets` | generated `train.csv` and `test.csv` |
 
-### Fundamentals
+</details>
 
-1. **Multilayer Perceptron (MLP)**:
+---
 
-    A Multilayer Perceptron is a type of neural network that consists of:
+## How it works
 
-    - **Input Layer**: Accepts input features.
-    - **Hidden Layers**: Processes data with weights, biases, and activations.
-    - **Output Layer**: Produces predictions.
+```mermaid
+flowchart LR
+    A[CSV dataset] --> B[Split & standardise]
+    B --> C[Forward pass<br/>z = W·X + b]
+    C --> D[Softmax output]
+    D --> E[Binary cross-entropy<br/>+ L2 penalty]
+    E --> F[Backpropagation]
+    F --> G[Gradient descent<br/>or Nesterov]
+    G -->|next mini-batch| C
+    G --> H[Saved model]
+```
 
-    Each neuron computes:
+<details>
+<summary><b>The maths behind it</b></summary>
 
-    - `z = W ⋅ X + b`
-    - `a = Activation(z)`
+**Forward propagation**: each layer computes `z = W · X + b`, then `a = activation(z)`. Hidden layers use ReLU, and the output layer uses softmax so the two class probabilities sum to 1.
 
-2. **Core Concepts in MLP Training**:
+**Loss**: binary cross-entropy,
+`BCE = -1/N Σ [ yᵢ · log(ŷᵢ) + (1 - yᵢ) · log(1 - ŷᵢ) ]`,
+plus an L2 penalty `λ · Σ W²` that discourages large weights.
 
-    a. **Feedforwarding**:
+**Backpropagation**: the gradient of the loss is propagated backward, layer by layer, to get `∇J(θ)` for every weight and bias.
 
-    - Data flows **forward** through the network:  
-    Input → Hidden Layers → Output.
+**Gradient descent**: `θ ← θ - η · ∇J(θ)`.
 
-    - Produces predictions:  
-        `y_pred = Softmax(W ⋅ X + b)`
+**Nesterov momentum**: looks ahead before computing the gradient, which converges faster and overshoots less:
+1. `θ_lookahead = θ + μ · v(t-1)`
+2. `v(t) = μ · v(t-1) - η · ∇J(θ_lookahead)`
+3. `θ ← θ + v(t)`
 
-    b. **Backpropagation**:
+**Early stopping**: training stops when the validation loss has not improved for `patience` epochs, to limit overfitting.
 
-    - Adjusts weights and biases by propagating **errors backward**.
-    
-    - Uses the gradient of the loss with respect to weights to optimize parameters.
+</details>
 
-    c. **Gradient Descent**:
-    
-    A method to minimize the **loss function** (error between predictions and labels): `θ ← θ - η ⋅ ∇J(θ)`
+---
 
-    - `θ`: Parameters (weights and biases).
-    - `η`: Learning rate.
-    - `∇J(θ)`: Gradient of the loss function.
+## Project structure
 
-3. **Matrices in MLP**:
+```
+MultilayerPerception_42/
+├── main.py                 # CLI entry point
+├── sources/
+│   ├── split.py            # dataset split
+│   ├── train.py            # training command
+│   ├── predict.py          # prediction command
+│   ├── compare.py          # model comparison
+│   ├── clean.py            # cleanup
+│   └── utils/
+│       ├── class_utils.py  # Dataset and MLP classes: forward, backprop, optimisers
+│       ├── data_utils.py   # standardisation, activations, metrics
+│       ├── parse_utils.py  # command-line parsing
+│       └── ...
+├── datasets/data.csv       # Wisconsin breast cancer dataset
+└── virtualenv.sh
+```
 
-    a. **Weights Matrix**: 
+---
 
-    - Represents connections between neurons, with dimensions based on the number of inputs and outputs.
-   
-    b. **Bias Vector**: 
-    
-    - Shifts the weighted sums for each neuron.
-    
-    c. **Forward Propagation**:
+<div align="center">
 
-    - `z = W ⋅ X + b`
-    - `a = Activation(z)`
+Made by **Melody BOY** · 42 Nice · [GitHub](https://github.com/mboy29)
 
-    d. **Backpropagation**: 
-    
-    - Uses gradients (matrices) to update weights and biases.
-
-4. **Key Training Concepts**:
-
-    a. **Batch**:
-    - Small subset of the training data used in one training step.
-
-    b. **Epoch**:
-    - Processes the entire dataset once.
-
-    c. **L2 Regularization**:
-    
-    - Prevents overfitting by penalizing large weights: 
-        
-        `J_reg = J_loss + λ ⋅ Σ(W^2)`, where `λ` represents the regularization strength.
-
-5. **Evaluation and Loss Functions**
-
-    a. **Binary Cross-Entropy (BCE)**: 
-    
-    - A loss function for binary classification tasks: 
-        
-        `BCE = -1/N Σ [y_i ⋅ log(ŷ_i) + (1 - y_i) ⋅ log(1 - ŷ_i)]`
-
-    - Penalizes incorrect predictions more heavily.
-
-    b. **Softmax vs. Sigmoid**:
-    
-    - **Sigmoid**:
-
-        - Maps values to probabilities in the range `[0, 1]`. Commonly used for **binary classification**: 
-            
-            `σ(x) = 1 / (1 + e^(-x))`
-    
-    - **Softmax**: 
-
-        - Converts outputs to probabilities that **sum to 1**. Commonly used for **multi-class classification**: 
-        
-            `Softmax(x_i) = e^(x_i) / Σ(e^(x_j)) for all j`
-
-6. **Advanced Optimization Techniques**:
-
-    a. **Overfitting**:
-
-    - Happens when the model learns the training data too well (including noise) and fails to generalize.
-
-    - **Symptoms**:
-        - High accuracy on training data.
-        - Poor accuracy on validation/testing data.
-        
-    - **Mitigation**:
-        - Use regularization (e.g., L2 regularization).
-        - Apply early stopping.
-        - Add more data or use data augmentation.
-
-    b. **Nesterov Momentum**:
-
-    - An improvement over standard momentum by adding a **lookahead step**:
-        1. **Look ahead** to estimate the position: 
-            
-            `θ_lookahead = θ + μ ⋅ v_(t-1)`
-
-        2. Compute gradient at this position: 
-        
-            `v_t = μ ⋅ v_(t-1) - η ⋅ ∇J(θ_lookahead)`
-
-        3. Update the weights: 
-            
-            `θ ← θ + v_t`
-
-    - **Benefit**: Helps converge faster and avoids overshooting.
+</div>
